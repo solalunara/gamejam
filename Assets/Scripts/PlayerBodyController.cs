@@ -10,7 +10,6 @@ using Vector3 = UnityEngine.Vector3;
 
 public class PlayerBodyController : MonoBehaviour
 {
-    GameObject m_pCamera;
     GameObject m_pGround => CheckGround();
     Vector3 m_vGroundNormal;
     GameObject m_pCapsule;
@@ -21,24 +20,28 @@ public class PlayerBodyController : MonoBehaviour
     void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
-        m_pCamera = GetComponentInChildren<Camera>().gameObject;
         m_pCapsule = GetComponentInChildren<PlayerCapsule>().gameObject;
         m_pUncrouchedCollider = GetComponent<CapsuleCollider>();
         m_pCrouchedCollider = GetComponent<SphereCollider>();
     }
 
     public float m_fMouseSpeed = 1000.0f;
-    public float m_fMaxSpeed = 5.0f;
+    public float m_fMaxSpeed = 3.0f;
+    public float m_fMaxSprintSpeed = 6.0f;
     public int m_iGroundThreshold = 1;
     public float m_fFrictionConstant = 1.5f;
     public int m_iCoyoteFrames = 2;
     public Vector3 m_vGravity = -9.81f * Vector3.up;
     public bool m_bEnableABH = true;
+    public float m_fStamina = 1.0f;
+    public float m_fStaminaTime = 3.0f;
+    public float m_fStaminaRecoveryTime = 5.0f;
     int m_iGroundFrames = 0;
     int m_iFramesSinceGround = 0;
     bool m_bCrouched = false;
     bool m_bWantsToCrouch = false;
     int m_iJumpTimer = 0;
+    bool m_bSprinting = false;
 
     GameObject CheckGround()
     {
@@ -60,6 +63,7 @@ public class PlayerBodyController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        /*
         // edit cursor lock state for editor
         if ( Application.isEditor )
         {
@@ -92,13 +96,17 @@ public class PlayerBodyController : MonoBehaviour
             m_pCamera.transform.parent.Rotate( new Vector3( 1, 0, 0 ), y * m_fMouseSpeed * Time.deltaTime, Space.Self );
             transform.Rotate( new Vector3( 0, 1, 0 ), x * m_fMouseSpeed * Time.deltaTime, Space.World );
         }
+        */
 
         if ( Input.GetKeyDown( KeyCode.LeftControl ) )
             m_bWantsToCrouch = true;
         else if ( Input.GetKeyUp( KeyCode.LeftControl ) )
             m_bWantsToCrouch = false;
 
-
+        if ( Input.GetKeyDown( KeyCode.LeftShift ) )
+            m_bSprinting = true;
+        else if ( Input.GetKeyUp( KeyCode.LeftShift ) )
+            m_bSprinting = false;
     }
 
     Dictionary<GameObject, Vector3[]> Collisions = new();
@@ -195,14 +203,31 @@ public class PlayerBodyController : MonoBehaviour
         if ( m_iGroundFrames == 0 )
             WalkForce *= 0.1f;
 
-        if ( pRigidBody.velocity.sqrMagnitude < m_fMaxSpeed * m_fMaxSpeed )
+        if ( m_bSprinting && m_fStamina > 0.0f )
+        {
+            m_fStamina -= Time.fixedDeltaTime / m_fStaminaTime;
+            if ( m_fStamina < 0.0f )
+            {
+                m_fStamina = 0.0f;
+                m_bSprinting = false;
+            }
+        }
+        else if ( m_fStamina < 1.0f )
+        {
+            m_fStamina += Time.fixedDeltaTime / m_fStaminaRecoveryTime;
+            if ( m_fStamina > 1.0f )
+                m_fStamina = 1.0f;
+        }
+        float fMaxSpeed = m_bSprinting ? m_fMaxSprintSpeed : m_fMaxSpeed;
+
+        if ( pRigidBody.velocity.sqrMagnitude < fMaxSpeed * fMaxSpeed )
         {
             // clamp walk force to only add up to max speed
-            if ( ( pRigidBody.velocity + WalkForce ).sqrMagnitude > m_fMaxSpeed * m_fMaxSpeed )
+            if ( ( pRigidBody.velocity + WalkForce ).sqrMagnitude > fMaxSpeed * fMaxSpeed )
             {
                 float __A = WalkForce.sqrMagnitude;
                 float __B = 2 * Vector3.Dot( pRigidBody.velocity, WalkForce );
-                float __C = pRigidBody.velocity.sqrMagnitude - m_fMaxSpeed * m_fMaxSpeed;
+                float __C = pRigidBody.velocity.sqrMagnitude - fMaxSpeed * fMaxSpeed;
                 float fScaleFactor = -__B + Mathf.Sqrt( __B * __B - 4 * __A * __C );
                 fScaleFactor /= 2 * __A;
                 if ( fScaleFactor < 0 || fScaleFactor > 1 )
