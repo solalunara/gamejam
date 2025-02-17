@@ -23,7 +23,7 @@ public class PlayerBodyController : MonoBehaviour
     public float m_fMouseSpeed = 1000.0f;
     public float m_fMaxSpeed = 5.0f;
     public int m_iGroundThreshold = 1;
-    public float m_fFrictionConstant = 0.2f;
+    public float m_fFrictionConstant = 1.5f;
     public int m_iCoyoteFrames = 4;
     int m_iGroundFrames = 0;
     int m_iFramesSinceGround = 0;
@@ -116,9 +116,11 @@ public class PlayerBodyController : MonoBehaviour
         var pRigidBody = GetComponent<Rigidbody>();
         if ( m_pGround )
         {
-            Vector3 vFriction = m_fFrictionConstant * Vector3.Dot( m_vGroundNormal, Vector3.up ) * -pRigidBody.velocity.normalized;
-            vFriction = Vector3.ClampMagnitude( vFriction, pRigidBody.velocity.magnitude );
-            pRigidBody.AddForce( vFriction , ForceMode.VelocityChange );
+            Vector3 vFriction = 9.81f * m_fFrictionConstant * Time.fixedDeltaTime * Vector3.Dot( m_vGroundNormal, Vector3.up ) / pRigidBody.velocity.magnitude * -pRigidBody.velocity;
+            if ( vFriction.sqrMagnitude > pRigidBody.velocity.sqrMagnitude )
+                pRigidBody.velocity = Vector3.zero;
+            else
+                pRigidBody.velocity += vFriction;
         }
     }
 
@@ -129,6 +131,7 @@ public class PlayerBodyController : MonoBehaviour
         m_iGroundFrames = m_pGround != null ? m_iGroundFrames + 1 : 0;
         m_iFramesSinceGround = m_iGroundFrames >= m_iGroundThreshold ? 0 : m_iFramesSinceGround + 1;
 
+        pRigidBody.velocity += -9.81f * Time.fixedDeltaTime * Vector3.up;
         Friction();
 
         //try to walk
