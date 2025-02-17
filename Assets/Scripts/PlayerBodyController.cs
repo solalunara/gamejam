@@ -13,6 +13,7 @@ public class PlayerBodyController : MonoBehaviour
     GameObject m_pCamera;
     GameObject m_pGround => CheckGround();
     Vector3 m_vGroundNormal;
+    GameObject m_pCapsule;
 
     CapsuleCollider m_pUncrouchedCollider;
     SphereCollider m_pCrouchedCollider;
@@ -21,6 +22,7 @@ public class PlayerBodyController : MonoBehaviour
     {
         Cursor.lockState = CursorLockMode.Locked;
         m_pCamera = GetComponentInChildren<Camera>().gameObject;
+        m_pCapsule = GetComponentInChildren<PlayerCapsule>().gameObject;
         m_pUncrouchedCollider = GetComponent<CapsuleCollider>();
         m_pCrouchedCollider = GetComponent<SphereCollider>();
     }
@@ -29,13 +31,14 @@ public class PlayerBodyController : MonoBehaviour
     public float m_fMaxSpeed = 5.0f;
     public int m_iGroundThreshold = 1;
     public float m_fFrictionConstant = 1.5f;
-    public int m_iCoyoteFrames = 5;
+    public int m_iCoyoteFrames = 2;
     public Vector3 m_vGravity = -9.81f * Vector3.up;
     public bool m_bEnableABH = true;
     int m_iGroundFrames = 0;
     int m_iFramesSinceGround = 0;
     bool m_bCrouched = false;
     bool m_bWantsToCrouch = false;
+    int m_iJumpTimer = 0;
 
     GameObject CheckGround()
     {
@@ -86,7 +89,7 @@ public class PlayerBodyController : MonoBehaviour
         {
             float y = -Input.GetAxis( "Mouse Y" );
             float x = Input.GetAxis( "Mouse X" );
-            m_pCamera.transform.Rotate( new Vector3( 1, 0, 0 ), y * m_fMouseSpeed * Time.deltaTime, Space.Self );
+            m_pCamera.transform.parent.Rotate( new Vector3( 1, 0, 0 ), y * m_fMouseSpeed * Time.deltaTime, Space.Self );
             transform.Rotate( new Vector3( 0, 1, 0 ), x * m_fMouseSpeed * Time.deltaTime, Space.World );
         }
 
@@ -147,29 +150,35 @@ public class PlayerBodyController : MonoBehaviour
         m_iGroundFrames = m_pGround != null ? m_iGroundFrames + 1 : 0;
         m_iFramesSinceGround = m_iGroundFrames >= m_iGroundThreshold ? 0 : m_iFramesSinceGround + 1;
 
-        if ( m_bEnableABH && m_bCrouched && m_iGroundFrames == 1 && pRigidBody.velocity.sqrMagnitude > m_fMaxSpeed * m_fMaxSpeed )
-            pRigidBody.AddForce( -transform.forward * 5.0f, ForceMode.VelocityChange );
-
-        pRigidBody.velocity += Time.fixedDeltaTime * m_vGravity;
-        Friction();
+        //if ( m_bEnableABH && m_bCrouched && m_iGroundFrames == 1 && pRigidBody.velocity.sqrMagnitude > m_fMaxSpeed * m_fMaxSpeed )
+        //    pRigidBody.AddForce( -transform.forward * 5.0f, ForceMode.VelocityChange );
 
         if ( m_bWantsToCrouch != m_bCrouched )
         {
             bool bCanChangeState = true;
             if ( !m_bWantsToCrouch )
-                bCanChangeState = !Physics.SphereCast( transform.position, 0.499f, Vector3.up, out _, 1.01f );
+                bCanChangeState = !Physics.SphereCast( transform.position, 0.49f, Vector3.up, out _, 1.01f );
 
             if ( bCanChangeState )
             {
-                if ( !m_bWantsToCrouch && m_iGroundFrames > 1 )
-                    transform.position += 0.51f * Vector3.up - Time.fixedDeltaTime * pRigidBody.velocity.y * Vector3.up;
+                if ( !m_bWantsToCrouch )
+                {
+                    bool bHit = Physics.SphereCast( transform.position, 0.49f, -Vector3.up, out RaycastHit hitInfo, 0.51f );
+                    if ( bHit ) 
+                        transform.position = hitInfo.point + 1.01f * Vector3.up;
+                }
 
                 m_bCrouched = m_bWantsToCrouch;
                 m_pUncrouchedCollider.enabled = !m_bCrouched;
                 m_pCrouchedCollider.enabled = m_bCrouched;
                 Collisions.Clear();
+                m_pCapsule.GetComponent<MeshRenderer>().enabled = !m_pCapsule.GetComponent<MeshRenderer>().enabled;
             }
         }
+
+        pRigidBody.velocity += Time.fixedDeltaTime * m_vGravity;
+        Friction();
+
 
         //try to walk
         Vector3 WalkForce = Vector3.zero;
@@ -205,10 +214,12 @@ public class PlayerBodyController : MonoBehaviour
         }
 
 
-
-        if ( Input.GetKey( KeyCode.Space ) && m_iFramesSinceGround < m_iCoyoteFrames )
+        if ( m_iJumpTimer > 0 )
+            --m_iJumpTimer;
+        if ( Input.GetKey( KeyCode.Space ) && m_iJumpTimer == 0 && m_iFramesSinceGround < m_iCoyoteFrames )
         {
-            GetComponent<Rigidbody>().velocity += 2.0f * Vector3.up;
+            m_iJumpTimer = 10;
+            pRigidBody.velocity += 4.0f * Vector3.up;
             m_iFramesSinceGround += m_iCoyoteFrames;
         }
 
