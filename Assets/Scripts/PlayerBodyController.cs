@@ -13,20 +13,29 @@ public class PlayerBodyController : MonoBehaviour
     GameObject m_pCamera;
     GameObject m_pGround => CheckGround();
     Vector3 m_vGroundNormal;
+
+    CapsuleCollider m_pUncrouchedCollider;
+    SphereCollider m_pCrouchedCollider;
     // Start is called before the first frame update
     void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
         m_pCamera = GetComponentInChildren<Camera>().gameObject;
+        m_pUncrouchedCollider = GetComponent<CapsuleCollider>();
+        m_pCrouchedCollider = GetComponent<SphereCollider>();
     }
 
     public float m_fMouseSpeed = 1000.0f;
     public float m_fMaxSpeed = 5.0f;
     public int m_iGroundThreshold = 1;
     public float m_fFrictionConstant = 1.5f;
-    public int m_iCoyoteFrames = 4;
+    public int m_iCoyoteFrames = 5;
+    public Vector3 m_vGravity = -9.81f * Vector3.up;
+    public bool m_bEnableABH = true;
     int m_iGroundFrames = 0;
     int m_iFramesSinceGround = 0;
+    bool m_bCrouched = false;
+    bool m_bWantsToCrouch = false;
 
     GameObject CheckGround()
     {
@@ -80,6 +89,13 @@ public class PlayerBodyController : MonoBehaviour
             m_pCamera.transform.Rotate( new Vector3( 1, 0, 0 ), y * m_fMouseSpeed * Time.deltaTime, Space.Self );
             transform.Rotate( new Vector3( 0, 1, 0 ), x * m_fMouseSpeed * Time.deltaTime, Space.World );
         }
+
+        if ( Input.GetKeyDown( KeyCode.LeftControl ) )
+            m_bWantsToCrouch = true;
+        else if ( Input.GetKeyUp( KeyCode.LeftControl ) )
+            m_bWantsToCrouch = false;
+
+
     }
 
     Dictionary<GameObject, Vector3[]> Collisions = new();
@@ -114,7 +130,7 @@ public class PlayerBodyController : MonoBehaviour
     void Friction()
     {
         var pRigidBody = GetComponent<Rigidbody>();
-        if ( m_pGround )
+        if ( m_iGroundFrames > m_iGroundThreshold )
         {
             Vector3 vFriction = 9.81f * m_fFrictionConstant * Time.fixedDeltaTime * Vector3.Dot( m_vGroundNormal, Vector3.up ) / pRigidBody.velocity.magnitude * -pRigidBody.velocity;
             if ( vFriction.sqrMagnitude > pRigidBody.velocity.sqrMagnitude )
@@ -131,8 +147,29 @@ public class PlayerBodyController : MonoBehaviour
         m_iGroundFrames = m_pGround != null ? m_iGroundFrames + 1 : 0;
         m_iFramesSinceGround = m_iGroundFrames >= m_iGroundThreshold ? 0 : m_iFramesSinceGround + 1;
 
-        pRigidBody.velocity += -9.81f * Time.fixedDeltaTime * Vector3.up;
+        if ( m_bEnableABH && m_bCrouched && m_iGroundFrames == 1 && pRigidBody.velocity.sqrMagnitude > m_fMaxSpeed * m_fMaxSpeed )
+            pRigidBody.AddForce( -transform.forward * 5.0f, ForceMode.VelocityChange );
+
+        pRigidBody.velocity += Time.fixedDeltaTime * m_vGravity;
         Friction();
+
+        if ( m_bWantsToCrouch != m_bCrouched )
+        {
+            bool bCanChangeState = true;
+            if ( !m_bWantsToCrouch )
+                bCanChangeState = !Physics.SphereCast( transform.position, 0.499f, Vector3.up, out _, 1.01f );
+
+            if ( bCanChangeState )
+            {
+                if ( !m_bWantsToCrouch && m_iGroundFrames > 1 )
+                    transform.position += 0.51f * Vector3.up - Time.fixedDeltaTime * pRigidBody.velocity.y * Vector3.up;
+
+                m_bCrouched = m_bWantsToCrouch;
+                m_pUncrouchedCollider.enabled = !m_bCrouched;
+                m_pCrouchedCollider.enabled = m_bCrouched;
+                Collisions.Clear();
+            }
+        }
 
         //try to walk
         Vector3 WalkForce = Vector3.zero;
@@ -167,12 +204,13 @@ public class PlayerBodyController : MonoBehaviour
             pRigidBody.AddForce( WalkForce, ForceMode.VelocityChange );
         }
 
+
+
         if ( Input.GetKey( KeyCode.Space ) && m_iFramesSinceGround < m_iCoyoteFrames )
         {
-            pRigidBody.AddForce( new Vector3( 0, 2, 0 ), ForceMode.VelocityChange );
-            m_iFramesSinceGround += 10000;
+            GetComponent<Rigidbody>().velocity += 2.0f * Vector3.up;
+            m_iFramesSinceGround += m_iCoyoteFrames;
         }
-
 
 
         //transform.rotation = Quaternion.Slerp( transform.rotation, BodyGoal.transform.rotation, .2f );
