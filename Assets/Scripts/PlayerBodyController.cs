@@ -25,17 +25,14 @@ public class PlayerBodyController : MonoBehaviour
     public float m_fMouseSpeed = 1000.0f;
     public float m_fMaxSpeed = 5.0f;
 
-    Dictionary<GameObject, Vector3> Collisions = new();
+    Dictionary<GameObject, Vector3[]> Collisions = new();
     void OnCollisionEnter( Collision c )
     {
         HashSet<Vector3> pContactNormals = new();
         foreach ( ContactPoint contact in c.contacts )
             pContactNormals.Add( contact.normal );
         
-        if ( pContactNormals.Count > 1 )
-            throw new NotImplementedException( "not implemented yet" );
-
-        Collisions.Add( c.gameObject, pContactNormals.First() );
+        Collisions.Add( c.gameObject, pContactNormals.ToArray() );
     }
 
     void OnCollisionStay( Collision c )
@@ -43,21 +40,11 @@ public class PlayerBodyController : MonoBehaviour
         HashSet<Vector3> pContactNormals = new();
         foreach ( ContactPoint contact in c.contacts )
             pContactNormals.Add( contact.normal );
-        
-        if ( pContactNormals.Count > 1 )
-            throw new NotImplementedException( "not implemented yet" );
 
-        Collisions[ c.gameObject ] = pContactNormals.First();
+        Collisions[ c.gameObject ] = pContactNormals.ToArray();
     }
     void OnCollisionExit( Collision c )
     {
-        HashSet<Vector3> pContactNormals = new();
-        foreach ( ContactPoint contact in c.contacts )
-            pContactNormals.Add( contact.normal );
-
-        if ( pContactNormals.Count > 1 )
-            throw new NotImplementedException( "not implemented yet" );
-
         Collisions.Remove( c.gameObject );
     }
 
@@ -65,9 +52,12 @@ public class PlayerBodyController : MonoBehaviour
     {
         foreach ( var Collision in Collisions )
         {
-            Vector3 vCollisionNormal = Collision.Value;
-            if ( vCollisionNormal.y > 0.7 )
-                return Collision.Key;
+            Vector3[] vCollisionNormals = Collision.Value;
+            foreach ( Vector3 vCollisionNormal in vCollisionNormals )
+            {
+                if ( vCollisionNormal.y > 0.7 )
+                    return Collision.Key;
+            }
         }
         return null;
     }
