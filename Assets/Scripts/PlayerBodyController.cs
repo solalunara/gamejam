@@ -38,7 +38,7 @@ public class PlayerBodyController : MonoBehaviour
     public float m_fStaminaRecoveryTime = 5.0f;
     int m_iGroundFrames = 0;
     int m_iFramesSinceGround = 0;
-    bool m_bCrouched = false;
+    int m_iCrouchedFrames = 0;
     bool m_bWantsToCrouch = false;
     int m_iJumpTimer = 0;
     bool m_bSprinting = false;
@@ -118,6 +118,13 @@ public class PlayerBodyController : MonoBehaviour
 
         foreach ( ContactPoint contact in contacts )
             pContactNormals.Add( contact.normal );
+
+        if ( Collisions.ContainsKey( c.gameObject ) )
+        {
+            Debug.LogWarning( "Attempting to add key " + c.gameObject + "despite already being in the dictionary" );
+            Collisions[ c.gameObject ] = pContactNormals.ToArray();
+            return;
+        }
         
         Collisions.Add( c.gameObject, pContactNormals.ToArray() );
     }
@@ -156,12 +163,14 @@ public class PlayerBodyController : MonoBehaviour
         var pRigidBody = GetComponent<Rigidbody>();
 
         m_iGroundFrames = m_pGround != null ? m_iGroundFrames + 1 : 0;
+        m_iCrouchedFrames = m_iCrouchedFrames > 0 ? m_iCrouchedFrames + 1 : 0;
         m_iFramesSinceGround = m_iGroundFrames >= m_iGroundThreshold ? 0 : m_iFramesSinceGround + 1;
+        m_iJumpTimer = m_iJumpTimer > 0 ? m_iJumpTimer - 1 : 0;
 
         //if ( m_bEnableABH && m_bCrouched && m_iGroundFrames == 1 && pRigidBody.velocity.sqrMagnitude > m_fMaxSpeed * m_fMaxSpeed )
         //    pRigidBody.AddForce( -transform.forward * 5.0f, ForceMode.VelocityChange );
 
-        if ( m_bWantsToCrouch != m_bCrouched )
+        if ( m_bWantsToCrouch != ( m_iCrouchedFrames > 0 ) )
         {
             bool bCanChangeState = true;
             if ( !m_bWantsToCrouch )
@@ -173,14 +182,15 @@ public class PlayerBodyController : MonoBehaviour
                 {
                     bool bHit = Physics.SphereCast( transform.position, 0.49f, -Vector3.up, out RaycastHit hitInfo, 0.51f );
                     if ( bHit ) 
-                        transform.position = hitInfo.point + 1.01f * Vector3.up;
+                        transform.position = hitInfo.point + 1.0f * Vector3.up;
+
+                    m_pUncrouchedCollider.enabled = true;
+                    m_pCrouchedCollider.enabled = false;
+                    m_pCapsule.GetComponent<MeshRenderer>().enabled = true;
+                    Collisions.Clear();
                 }
 
-                m_bCrouched = m_bWantsToCrouch;
-                m_pUncrouchedCollider.enabled = !m_bCrouched;
-                m_pCrouchedCollider.enabled = m_bCrouched;
-                Collisions.Clear();
-                m_pCapsule.GetComponent<MeshRenderer>().enabled = !m_pCapsule.GetComponent<MeshRenderer>().enabled;
+                m_iCrouchedFrames = m_bWantsToCrouch ? 1 : 0;
             }
         }
 
@@ -199,6 +209,9 @@ public class PlayerBodyController : MonoBehaviour
         if ( Input.GetKey( KeyCode.A ) )
             WalkForce -= transform.right;
         WalkForce = WalkForce.normalized;
+
+        if ( WalkForce != Vector3.zero )
+            m_pCapsule.transform.forward = WalkForce;
 
         if ( m_iGroundFrames == 0 )
             WalkForce *= 0.1f;
@@ -239,13 +252,22 @@ public class PlayerBodyController : MonoBehaviour
         }
 
 
-        if ( m_iJumpTimer > 0 )
-            --m_iJumpTimer;
         if ( Input.GetKey( KeyCode.Space ) && m_iJumpTimer == 0 && m_iFramesSinceGround < m_iCoyoteFrames )
         {
-            m_iJumpTimer = 10;
+            m_iJumpTimer = m_iCoyoteFrames + 1;
             pRigidBody.velocity += 4.0f * Vector3.up;
             m_iFramesSinceGround += m_iCoyoteFrames;
+        }
+
+        // crouch only after we are sure whether or not we're crouch jumping
+        if ( m_iCrouchedFrames > m_iCoyoteFrames && m_pUncrouchedCollider.enabled )
+        {
+            Collisions.Clear();
+            m_pUncrouchedCollider.enabled = false;
+            m_pCrouchedCollider.enabled = true;
+            m_pCapsule.GetComponent<MeshRenderer>().enabled = false;
+            if ( m_iGroundFrames > 0 )
+                transform.position -= 1.0f * Vector3.up;
         }
 
 
