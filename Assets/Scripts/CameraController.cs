@@ -26,7 +26,7 @@ public class CameraController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Vector3 vPlanePos = Vector3.ProjectOnPlane( m_pPlayer.transform.position, Vector3.up ) - m_pCamera.transform.parent.position;
+        Vector3 vPlanePos = Vector3.ProjectOnPlane( m_pPlayer.m_pActiveRigidBody.position, Vector3.up ) - m_pCamera.transform.parent.position;
         m_pCamera.transform.LookAt( vPlanePos / 10 + m_pCamera.transform.parent.position + new Vector3( 0, 0, -5 ) );
     }
 }

@@ -3,36 +3,114 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
+using Unity.Collections;
 using Unity.VersionControl.Git;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UIElements;
 using Vector3 = UnityEngine.Vector3;
 
 public class PlayerBodyController : MonoBehaviour
 {
+    const float PLAYER_RADIUS = 0.5f;
+    const float PLAYER_UNCROUCHED_ORIGIN = 1.0f;
+    const float PLAYER_HEIGHT_CHANGE = PLAYER_UNCROUCHED_ORIGIN - PLAYER_RADIUS;
+    const float EPSILON = 0.1f;
+
     GameObject m_pGround => CheckGround();
     Vector3 m_vGroundNormal;
-    GameObject m_pCapsule;
 
-    CapsuleCollider m_pUncrouchedCollider;
-    SphereCollider m_pCrouchedCollider;
+    GameObject m_pUncrouchedObj;
+    GameObject m_pCrouchedObj;
+    public Rigidbody m_pActiveRigidBody;
+    public Dictionary<GameObject, Vector3[]> CollisionNormalsSet = new();
     // Start is called before the first frame update
     void Start()
     {
-        Cursor.lockState = CursorLockMode.Locked;
-        m_pCapsule = GetComponentInChildren<PlayerCapsule>().gameObject;
-        m_pUncrouchedCollider = GetComponent<CapsuleCollider>();
-        m_pCrouchedCollider = GetComponent<SphereCollider>();
+        m_pUncrouchedObj = GetComponentInChildren<PlayerUncrouchedPart>().gameObject;
+        m_pCrouchedObj = GetComponentInChildren<PlayerCrouchedPart>( true ).gameObject;
+        m_pActiveRigidBody = m_pUncrouchedObj.GetComponent<Rigidbody>();
     }
 
-    public float m_fMouseSpeed = 1000.0f;
+    void OnEnable()
+    {
+        Physics.ContactEvent += Physics_ContactEvent;
+    }
+
+    private void Physics_ContactEvent( PhysicsScene scene, NativeArray<ContactPairHeader>.ReadOnly pHeaderArray )
+    {
+        foreach ( var Header in pHeaderArray )
+        {
+            Component rFirst = Header.Body;
+            Component rSecond = Header.OtherBody;
+
+            PlayerJumpablePart pJumpable = null;
+            if ( rFirst  &&  rFirst.gameObject.GetComponent<PlayerJumpablePart>() )
+                pJumpable =  rFirst.gameObject.GetComponent<PlayerJumpablePart>();
+            if ( rSecond && rSecond.gameObject.GetComponent<PlayerJumpablePart>() )
+                pJumpable = rSecond.gameObject.GetComponent<PlayerJumpablePart>();
+
+            if ( !pJumpable )
+                continue;
+
+            for ( int i = Header.PairCount; --i >= 0; )
+            {
+                ref readonly var Pair = ref Header.GetContactPair( i );
+                
+                PlayerJumpablePart cFirst = Pair.Collider.gameObject.GetComponent<PlayerJumpablePart>();
+                PlayerJumpablePart cSecond = Pair.OtherCollider.gameObject.GetComponent<PlayerJumpablePart>();
+
+                if ( !cFirst && !cSecond )
+                    continue;
+
+                if ( cFirst && cSecond )
+                    throw new InvalidConnectionException( "Two objects with PlayerJumpablePart are colliding: " + cFirst.gameObject + " and " + cSecond.gameObject );
+
+                // 'normal' way around is 1st obj jumpable, 2nd object other
+                bool bReversed = !cFirst;
+
+                HashSet<Vector3> pContactNormals = new();
+                NativeArray<ContactPairPoint> contacts = new( Pair.ContactCount, Allocator.Temp );
+                Pair.CopyToNativeArray( contacts );
+
+                foreach ( ContactPairPoint contact in contacts )
+                    pContactNormals.Add( bReversed ? -contact.Normal : contact.Normal );
+                
+
+                GameObject pOtherObject = bReversed ? Pair.Collider.gameObject : Pair.OtherCollider.gameObject;
+
+                if ( !CollisionNormalsSet.ContainsKey( pOtherObject ) )
+                {
+                    if ( pContactNormals.Any() )
+                        CollisionNormalsSet.Add( pOtherObject, pContactNormals.ToArray() );
+                }
+                else
+                {
+                    if ( !pContactNormals.Any() )
+                        CollisionNormalsSet.Remove( pOtherObject );
+                    else
+                    {
+                        pContactNormals.UnionWith( CollisionNormalsSet[ pOtherObject ] );
+                        CollisionNormalsSet[ pOtherObject ] = pContactNormals.ToArray();
+                    }
+                }
+            }
+        }
+    }
+
+    //public float m_fMouseSpeed = 1000.0f;
+    public float m_fLookSpeed = 10.0f;
+    public float m_fAirMoveFraction = 0.1f;
     public float m_fMaxSpeed = 3.0f;
     public float m_fMaxSprintSpeed = 6.0f;
     public int m_iGroundThreshold = 1;
     public float m_fFrictionConstant = 1.5f;
     public int m_iCoyoteFrames = 2;
     public Vector3 m_vGravity = -9.81f * Vector3.up;
-    public bool m_bEnableABH = true;
+    public Vector3 m_vJumpVector = 4.0f * Vector3.up;
+    //public bool m_bEnableABH = true;
+    public float m_fMaxStamina = 1.0f;
     public float m_fStamina = 1.0f;
     public float m_fStaminaTime = 3.0f;
     public float m_fStaminaRecoveryTime = 5.0f;
@@ -45,15 +123,14 @@ public class PlayerBodyController : MonoBehaviour
 
     GameObject CheckGround()
     {
-        foreach ( var Collision in Collisions )
+        foreach ( var CollisionNormals in CollisionNormalsSet )
         {
-            Vector3[] vCollisionNormals = Collision.Value;
-            foreach ( Vector3 vCollisionNormal in vCollisionNormals )
+            foreach ( Vector3 vCollisionNormal in CollisionNormals.Value )
             {
                 if ( vCollisionNormal.y > 0.7 )
                 {
                     m_vGroundNormal = vCollisionNormal;
-                    return Collision.Key;
+                    return CollisionNormals.Key;
                 }
             }
         }
@@ -109,48 +186,14 @@ public class PlayerBodyController : MonoBehaviour
             m_bSprinting = false;
     }
 
-    Dictionary<GameObject, Vector3[]> Collisions = new();
-    void OnCollisionEnter( Collision c )
-    {
-        HashSet<Vector3> pContactNormals = new();
-        List<ContactPoint> contacts = new();
-        c.GetContacts( contacts );
-
-        foreach ( ContactPoint contact in contacts )
-            pContactNormals.Add( contact.normal );
-
-        if ( Collisions.ContainsKey( c.gameObject ) )
-        {
-            Debug.LogWarning( "Attempting to add key " + c.gameObject + "despite already being in the dictionary" );
-            Collisions[ c.gameObject ] = pContactNormals.ToArray();
-            return;
-        }
-        
-        Collisions.Add( c.gameObject, pContactNormals.ToArray() );
-    }
-
-    void OnCollisionStay( Collision c )
-    {
-        HashSet<Vector3> pContactNormals = new();
-        List<ContactPoint> contacts = new();
-        c.GetContacts( contacts );
-
-        foreach ( ContactPoint contact in contacts )
-            pContactNormals.Add( contact.normal );
-
-        Collisions[ c.gameObject ] = pContactNormals.ToArray();
-    }
-    void OnCollisionExit( Collision c )
-    {
-        Collisions.Remove( c.gameObject );
-    }
-
     void Friction()
     {
-        var pRigidBody = GetComponent<Rigidbody>();
+        var pRigidBody = m_pActiveRigidBody;
         if ( m_iGroundFrames > m_iGroundThreshold )
         {
-            Vector3 vFriction = 9.81f * m_fFrictionConstant * Time.fixedDeltaTime * Vector3.Dot( m_vGroundNormal, Vector3.up ) / pRigidBody.velocity.magnitude * -pRigidBody.velocity;
+            if ( pRigidBody.velocity.sqrMagnitude == 0.0f )
+                return;
+            Vector3 vFriction = Vector3.Dot( m_vGravity, -Vector3.up ) * m_fFrictionConstant * Time.fixedDeltaTime * Vector3.Dot( m_vGroundNormal, Vector3.up ) / pRigidBody.velocity.magnitude * -pRigidBody.velocity;
             if ( vFriction.sqrMagnitude > pRigidBody.velocity.sqrMagnitude )
                 pRigidBody.velocity = Vector3.zero;
             else
@@ -158,9 +201,56 @@ public class PlayerBodyController : MonoBehaviour
         }
     }
 
+    void SetCrouchedState( bool bCrouch )
+    {
+        bool bChangingState = bCrouch || ( !bCrouch && m_iCrouchedFrames > m_iCoyoteFrames + 1 ); // +1 since this occurs before the crouch code
+        if ( !bChangingState )
+            return;
+
+        GameObject pPreChangeObject = bCrouch ? m_pUncrouchedObj : m_pCrouchedObj;
+        GameObject pPostChangeObject = bCrouch ? m_pCrouchedObj : m_pUncrouchedObj;
+        Vector3 vVelocity = m_pActiveRigidBody.velocity;
+        UnityEngine.Quaternion qRot = m_pActiveRigidBody.rotation;
+        Vector3 vPos = Vector3.zero;
+        if ( !bCrouch )
+        {
+            bool bHit = Physics.SphereCast( m_pActiveRigidBody.position + EPSILON * Vector3.up, PLAYER_RADIUS, -Vector3.up, out RaycastHit hitInfo, PLAYER_RADIUS + EPSILON, ~LayerMask.GetMask( "Player", "NoCollisionCallbacks" ) );
+            if ( bHit )
+                vPos = hitInfo.point + PLAYER_UNCROUCHED_ORIGIN * Vector3.up;
+            else
+                vPos = m_pCrouchedObj.transform.position - PLAYER_HEIGHT_CHANGE * Vector3.up;
+        }
+        else
+        {
+            if ( m_iGroundFrames > 0 )
+                vPos = -PLAYER_HEIGHT_CHANGE * Vector3.up + m_pUncrouchedObj.transform.position;
+            else
+                vPos = +PLAYER_HEIGHT_CHANGE * Vector3.up + m_pUncrouchedObj.transform.position;
+        }
+
+        m_pUncrouchedObj.SetActive( !bCrouch );
+        m_pCrouchedObj.SetActive( bCrouch );
+
+        CollisionNormalsSet.Clear();
+
+        Transform[] pChildren = pPreChangeObject.GetComponentsInChildren<Transform>();
+        foreach ( var pChild in pChildren )
+        {
+            if ( pChild != pPreChangeObject.transform )
+            {
+                pChild.SetParent( pPostChangeObject.transform, false );
+                pChild.transform.position += ( bCrouch ? -1 : 1 ) * PLAYER_HEIGHT_CHANGE * Vector3.up;
+            }
+        }
+        m_pActiveRigidBody = pPostChangeObject.GetComponent<Rigidbody>();
+        m_pActiveRigidBody.velocity = vVelocity;
+        m_pActiveRigidBody.rotation = qRot;
+        m_pActiveRigidBody.position = vPos;
+    }
+
     void FixedUpdate()
     {
-        var pRigidBody = GetComponent<Rigidbody>();
+        var pRigidBody = m_pActiveRigidBody;
 
         m_iGroundFrames = m_pGround != null ? m_iGroundFrames + 1 : 0;
         m_iCrouchedFrames = m_iCrouchedFrames > 0 ? m_iCrouchedFrames + 1 : 0;
@@ -174,21 +264,12 @@ public class PlayerBodyController : MonoBehaviour
         {
             bool bCanChangeState = true;
             if ( !m_bWantsToCrouch )
-                bCanChangeState = !Physics.SphereCast( transform.position, 0.49f, Vector3.up, out _, 1.01f );
+                bCanChangeState = !Physics.SphereCast( m_pActiveRigidBody.position - EPSILON * Vector3.up, PLAYER_RADIUS, Vector3.up, out RaycastHit __debug, PLAYER_HEIGHT_CHANGE + PLAYER_RADIUS + EPSILON, ~LayerMask.GetMask( "Player", "NoCollisionCallbacks" ) );
 
             if ( bCanChangeState )
             {
                 if ( !m_bWantsToCrouch )
-                {
-                    bool bHit = Physics.SphereCast( transform.position, 0.49f, -Vector3.up, out RaycastHit hitInfo, 0.51f );
-                    if ( bHit ) 
-                        transform.position = hitInfo.point + 1.0f * Vector3.up;
-
-                    m_pUncrouchedCollider.enabled = true;
-                    m_pCrouchedCollider.enabled = false;
-                    m_pCapsule.GetComponent<MeshRenderer>().enabled = true;
-                    Collisions.Clear();
-                }
+                    SetCrouchedState( m_bWantsToCrouch );
 
                 m_iCrouchedFrames = m_bWantsToCrouch ? 1 : 0;
             }
@@ -201,20 +282,20 @@ public class PlayerBodyController : MonoBehaviour
         //try to walk
         Vector3 WalkForce = Vector3.zero;
         if ( Input.GetKey( KeyCode.W ) )
-            WalkForce += transform.forward;
+            WalkForce += Vector3.forward;
         if ( Input.GetKey( KeyCode.S ) )
-            WalkForce -= transform.forward;
+            WalkForce -= Vector3.forward;
         if ( Input.GetKey( KeyCode.D ) )
-            WalkForce += transform.right;
+            WalkForce += Vector3.right;
         if ( Input.GetKey( KeyCode.A ) )
-            WalkForce -= transform.right;
+            WalkForce -= Vector3.right;
         WalkForce = WalkForce.normalized;
 
         if ( WalkForce != Vector3.zero )
-            m_pCapsule.transform.forward = WalkForce;
+            pRigidBody.rotation = UnityEngine.Quaternion.LookRotation( WalkForce );
 
         if ( m_iGroundFrames == 0 )
-            WalkForce *= 0.1f;
+            WalkForce *= m_fAirMoveFraction;
 
         if ( m_bSprinting && m_fStamina > 0.0f )
         {
@@ -225,11 +306,11 @@ public class PlayerBodyController : MonoBehaviour
                 m_bSprinting = false;
             }
         }
-        else if ( m_fStamina < 1.0f )
+        else if ( m_fStamina < m_fMaxStamina )
         {
             m_fStamina += Time.fixedDeltaTime / m_fStaminaRecoveryTime;
-            if ( m_fStamina > 1.0f )
-                m_fStamina = 1.0f;
+            if ( m_fStamina > m_fMaxStamina )
+                m_fStamina = m_fMaxStamina;
         }
         float fMaxSpeed = m_bSprinting ? m_fMaxSprintSpeed : m_fMaxSpeed;
 
@@ -255,20 +336,13 @@ public class PlayerBodyController : MonoBehaviour
         if ( Input.GetKey( KeyCode.Space ) && m_iJumpTimer == 0 && m_iFramesSinceGround < m_iCoyoteFrames )
         {
             m_iJumpTimer = m_iCoyoteFrames + 1;
-            pRigidBody.velocity += 4.0f * Vector3.up;
+            pRigidBody.velocity += m_vJumpVector;
             m_iFramesSinceGround += m_iCoyoteFrames;
         }
 
         // crouch only after we are sure whether or not we're crouch jumping
-        if ( m_iCrouchedFrames > m_iCoyoteFrames && m_pUncrouchedCollider.enabled )
-        {
-            Collisions.Clear();
-            m_pUncrouchedCollider.enabled = false;
-            m_pCrouchedCollider.enabled = true;
-            m_pCapsule.GetComponent<MeshRenderer>().enabled = false;
-            if ( m_iGroundFrames > 0 )
-                transform.position -= 1.0f * Vector3.up;
-        }
+        if ( m_iCrouchedFrames > m_iCoyoteFrames && m_pUncrouchedObj.activeSelf )
+            SetCrouchedState( true );
 
 
         //transform.rotation = Quaternion.Slerp( transform.rotation, BodyGoal.transform.rotation, .2f );
