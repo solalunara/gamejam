@@ -4,20 +4,24 @@ using UnityEngine;
 
 public class Workstation : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
+    InteractPrompt pPrompt;
+    void OnEnable()
     {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        pPrompt = FindObjectOfType<InteractPrompt>( true );
     }
 
     void OnTriggerEnter( Collider other )
     {
-        
+        if ( !pPrompt.gameObject.activeSelf )
+            pPrompt.gameObject.SetActive( true );
+    }
+    void OnTriggerStay( Collider other )
+    {
+        if ( !pPrompt.gameObject.activeSelf )
+            pPrompt.gameObject.SetActive( true );
+    }
+    void OnTriggerExit( Collider other )
+    {
+        pPrompt.gameObject.SetActive( false );
     }
 }

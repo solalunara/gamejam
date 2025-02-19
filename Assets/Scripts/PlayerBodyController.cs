@@ -24,6 +24,10 @@ public class PlayerBodyController : MonoBehaviour
     GameObject m_pUncrouchedObj;
     GameObject m_pCrouchedObj;
     public Rigidbody m_pActiveRigidBody;
+    public Vector3 EyeLevel
+    {
+        get => m_bCrouched ? m_pActiveRigidBody.position : m_pActiveRigidBody.position + PLAYER_HEIGHT_CHANGE * Vector3.up;
+    }
     public Dictionary<GameObject, Vector3[]> CollisionNormalsSet = new();
     // Start is called before the first frame update
     void Start()
@@ -114,6 +118,7 @@ public class PlayerBodyController : MonoBehaviour
     public float m_fStamina = 1.0f;
     public float m_fStaminaTime = 3.0f;
     public float m_fStaminaRecoveryTime = 5.0f;
+    bool m_bCrouched = false;
     int m_iGroundFrames = 0;
     int m_iFramesSinceGround = 0;
     int m_iCrouchedFrames = 0;
@@ -203,7 +208,7 @@ public class PlayerBodyController : MonoBehaviour
 
     void SetCrouchedState( bool bCrouch )
     {
-        bool bChangingState = bCrouch || ( !bCrouch && m_iCrouchedFrames > m_iCoyoteFrames + 1 ); // +1 since this occurs before the crouch code
+        bool bChangingState = bCrouch != m_bCrouched;
         if ( !bChangingState )
             return;
 
@@ -236,6 +241,7 @@ public class PlayerBodyController : MonoBehaviour
         m_pCrouchedObj.SetActive( bCrouch );
 
         CollisionNormalsSet.Clear();
+        FindObjectOfType<InteractPrompt>( true ).gameObject.SetActive( false );
 
         Transform[] pChildren = pPreChangeObject.GetComponentsInChildren<Transform>();
         foreach ( var pChild in pChildren )
@@ -250,6 +256,8 @@ public class PlayerBodyController : MonoBehaviour
         m_pActiveRigidBody.velocity = vVelocity;
         m_pActiveRigidBody.rotation = qRot;
         m_pActiveRigidBody.position = vPos;
+
+        m_bCrouched = bCrouch;
     }
 
     void FixedUpdate()
@@ -264,7 +272,7 @@ public class PlayerBodyController : MonoBehaviour
         //if ( m_bEnableABH && m_bCrouched && m_iGroundFrames == 1 && pRigidBody.velocity.sqrMagnitude > m_fMaxSpeed * m_fMaxSpeed )
         //    pRigidBody.AddForce( -transform.forward * 5.0f, ForceMode.VelocityChange );
 
-        if ( m_bWantsToCrouch != ( m_iCrouchedFrames > 0 ) )
+        if ( m_bWantsToCrouch != ( m_iCrouchedFrames > 0 ) ) //not using m_bCrouched to prevent multiple runs while waiting to crouch
         {
             bool bCanChangeState = true;
             if ( !m_bWantsToCrouch )
