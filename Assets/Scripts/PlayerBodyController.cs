@@ -36,6 +36,11 @@ public class PlayerBodyController : MonoBehaviour
         get => m_pActiveWorkstation;
         set => m_pActiveWorkstation = value;
     }
+    public bool InputFrozen
+    {
+        get => m_bInputFrozen;
+        set => m_bInputFrozen = value;
+    }
 
     public GameObject m_pInteractionPrompt;
 
@@ -68,7 +73,7 @@ public class PlayerBodyController : MonoBehaviour
     GameObject m_pUncrouchedObj;
     GameObject m_pCrouchedObj;
     Workstation m_pActiveWorkstation;
-    bool m_bPhysPaused = false;
+    bool m_bInputFrozen = false;
 
     void OnEnable()
     {
@@ -204,10 +209,15 @@ public class PlayerBodyController : MonoBehaviour
         else if ( Input.GetKeyUp( KeyCode.LeftShift ) )
             m_bSprinting = false;
 
-        if ( Input.GetKeyUp( KeyCode.E ) && m_pActiveWorkstation )
-            TogglePuzzleActive( m_pActiveWorkstation.m_iType );
-        if ( Input.GetKeyDown( KeyCode.Escape ) && m_pActiveWorkstation )
-            SetPuzzleActive( false, m_pActiveWorkstation.m_iType );
+        if ( Input.GetKeyDown( KeyCode.E ) )
+        {
+            if ( Workstation.g_iActivePuzzles == 0 && m_pActiveWorkstation )
+                SetPuzzleActive( true, m_pActiveWorkstation.m_iType );
+            else
+                SetAllPuzzlesInactive();
+        }
+        if ( Input.GetKeyDown( KeyCode.Escape ) )
+            SetAllPuzzlesInactive();
 
 
         GameObject.FindWithTag( "StaminaBar" ).GetComponent<Slider>().value = m_fStamina;
@@ -225,7 +235,7 @@ public class PlayerBodyController : MonoBehaviour
         SetPuzzleActive( !bAlreadyActive, iPuzzle );
     }
 
-    void SetPuzzleActive( bool bActive, Puzzle iPuzzle )
+    public void SetPuzzleActive( bool bActive, Puzzle iPuzzle )
     {
         bool bAlreadyActive = ( Workstation.g_iActivePuzzles & (int)iPuzzle ) != 0;
         if ( bAlreadyActive == bActive )
@@ -236,7 +246,19 @@ public class PlayerBodyController : MonoBehaviour
         else
             Workstation.g_iActivePuzzles &= ~(int)iPuzzle;
         
-        m_bPhysPaused = Workstation.g_iActivePuzzles != 0;
+        InputFrozen = Workstation.g_iActivePuzzles != 0;
+        print( Workstation.g_iActivePuzzles );
+    }
+
+    public void SetAllPuzzlesInactive()
+    {
+        bool bAlreadyActive = Workstation.g_iActivePuzzles != 0;
+        if ( bAlreadyActive == false )
+            return; //nothing to do
+
+        Workstation.g_iActivePuzzles = 0;
+        
+        InputFrozen = false;
         print( Workstation.g_iActivePuzzles );
     }
 
@@ -309,11 +331,10 @@ public class PlayerBodyController : MonoBehaviour
         m_bCrouched = bCrouch;
     }
 
+
+
     void FixedUpdate()
     {
-        if ( m_bPhysPaused )
-            return;
-
         var pRigidBody = ActiveRigidBody;
 
         m_iGroundFrames = GroundEntity != null ? m_iGroundFrames + 1 : 0;
@@ -323,6 +344,12 @@ public class PlayerBodyController : MonoBehaviour
 
         //if ( m_bEnableABH && m_bCrouched && m_iGroundFrames == 1 && pRigidBody.velocity.sqrMagnitude > m_fMaxSpeed * m_fMaxSpeed )
         //    pRigidBody.AddForce( -transform.forward * 5.0f, ForceMode.VelocityChange );
+
+        pRigidBody.velocity += Time.fixedDeltaTime * m_vGravity;
+        Friction();
+
+        if ( InputFrozen )
+            return;
 
         if ( m_bWantsToCrouch != ( m_iCrouchedFrames > 0 ) ) //not using m_bCrouched to prevent multiple runs while waiting to crouch
         {
@@ -338,10 +365,6 @@ public class PlayerBodyController : MonoBehaviour
                 m_iCrouchedFrames = m_bWantsToCrouch ? 1 : 0;
             }
         }
-
-        pRigidBody.velocity += Time.fixedDeltaTime * m_vGravity;
-        Friction();
-
 
         //try to walk
         Vector3 WalkForce = Vector3.zero;

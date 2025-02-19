@@ -33,6 +33,7 @@ public class Workstation : MonoBehaviour
         if ( p )
         {
             p.ActiveWorkstation = null;
+            p.SetPuzzleActive( false, m_iType );
             if ( p.m_pInteractionPrompt.activeSelf )
                 p.m_pInteractionPrompt.SetActive( false );
         }
