@@ -6,7 +6,7 @@ public class CameraController : MonoBehaviour
 {
     Camera m_pCamera;
     GameObject m_pCameraReference;
-    PlayerBodyController m_pPlayer;
+    public GameObject m_pPlayer;
     public GameObject CameraReference
     {
         get => m_pCameraReference;
@@ -20,13 +20,13 @@ public class CameraController : MonoBehaviour
     void Start()
     {
         m_pCamera = FindObjectOfType<Camera>();
-        m_pPlayer = FindObjectOfType<PlayerBodyController>();
     }
 
     // Update is called once per frame
     void Update()
     {
-        Vector3 vPlanePos = Vector3.ProjectOnPlane( m_pPlayer.m_pActiveRigidBody.position, Vector3.up ) - m_pCamera.transform.parent.position;
+        Vector3 vPlanePos = Vector3.ProjectOnPlane( m_pPlayer.GetComponent<PlayerBodyController>().ActiveRigidBody.position, Vector3.up ) - m_pCamera.transform.parent.position;
         m_pCamera.transform.LookAt( vPlanePos / 10 + m_pCamera.transform.parent.position + new Vector3( 0, 0, -5 ) );
+        m_pPlayer.GetComponent<PlayerBodyController>().m_pInteractionPrompt.transform.rotation = Quaternion.LookRotation( m_pCamera.transform.forward );
     }
 }

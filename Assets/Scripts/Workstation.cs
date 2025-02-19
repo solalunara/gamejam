@@ -4,24 +4,37 @@ using UnityEngine;
 
 public class Workstation : MonoBehaviour
 {
-    InteractPrompt pPrompt;
-    void OnEnable()
-    {
-        pPrompt = FindObjectOfType<InteractPrompt>( true );
-    }
+    public static int g_iActivePuzzles = 0;
+    public Puzzle m_iType;
 
     void OnTriggerEnter( Collider other )
     {
-        if ( !pPrompt.gameObject.activeSelf )
-            pPrompt.gameObject.SetActive( true );
+        PlayerBodyController p = other.GetComponentInParent<PlayerBodyController>();
+        if ( p )
+        {
+            p.ActiveWorkstation = this;
+            if ( !p.m_pInteractionPrompt.activeSelf )
+                p.m_pInteractionPrompt.SetActive( true );
+        }
     }
     void OnTriggerStay( Collider other )
     {
-        if ( !pPrompt.gameObject.activeSelf )
-            pPrompt.gameObject.SetActive( true );
+        PlayerBodyController p = other.GetComponentInParent<PlayerBodyController>();
+        if ( p )
+        {
+            p.ActiveWorkstation = this;
+            if ( !p.m_pInteractionPrompt.activeSelf )
+                p.m_pInteractionPrompt.SetActive( true );
+        }
     }
     void OnTriggerExit( Collider other )
     {
-        pPrompt.gameObject.SetActive( false );
+        PlayerBodyController p = other.GetComponentInParent<PlayerBodyController>();
+        if ( p )
+        {
+            p.ActiveWorkstation = null;
+            if ( p.m_pInteractionPrompt.activeSelf )
+                p.m_pInteractionPrompt.SetActive( false );
+        }
     }
 }

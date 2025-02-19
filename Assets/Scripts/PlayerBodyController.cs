@@ -11,6 +11,13 @@ using UnityEngine;
 using Vector3 = UnityEngine.Vector3;
 using Slider = UnityEngine.UI.Slider;
 
+public enum Puzzle
+{
+    NONE          = 0,
+    TEMP_PUZZLE_A = 1<<0,
+    TEMP_PUZZLE_B = 1<<1
+}
+
 public class PlayerBodyController : MonoBehaviour
 {
     const float PLAYER_RADIUS = 0.5f;
@@ -18,32 +25,62 @@ public class PlayerBodyController : MonoBehaviour
     const float PLAYER_HEIGHT_CHANGE = PLAYER_UNCROUCHED_ORIGIN - PLAYER_RADIUS;
     const float EPSILON = 0.1f;
 
-    GameObject m_pGround => CheckGround();
-    Vector3 m_vGroundNormal;
 
+    public GameObject GroundEntity => CheckGround();
+    public Rigidbody ActiveRigidBody => m_pActiveRigidBody;
+    public Vector3 EyeLevel => m_bCrouched ? ActiveRigidBody.position : ActiveRigidBody.position + PLAYER_HEIGHT_CHANGE * Vector3.up;
+    public readonly Dictionary<GameObject, Vector3[]> CollisionNormalsSet = new();
+
+    public Workstation ActiveWorkstation 
+    {
+        get => m_pActiveWorkstation;
+        set => m_pActiveWorkstation = value;
+    }
+
+    public GameObject m_pInteractionPrompt;
+
+    //public float m_fMouseSpeed = 1000.0f;
+    public float m_fLookSpeed = 10.0f;
+    public float m_fAirMoveFraction = 0.1f;
+    public float m_fMaxSpeed = 3.0f;
+    public float m_fMaxSprintSpeed = 6.0f;
+    public int m_iGroundThreshold = 1;
+    public float m_fFrictionConstant = 1.5f;
+    public int m_iCoyoteFrames = 2;
+    public Vector3 m_vGravity = -9.81f * Vector3.up;
+    public Vector3 m_vJumpVector = 4.0f * Vector3.up;
+    //public bool m_bEnableABH = true;
+    public float m_fMaxStamina = 1.0f;
+    public float m_fMinStamina = 0.05f;
+    public float m_fStamina = 1.0f;
+    public float m_fStaminaTime = 3.0f;
+    public float m_fStaminaRecoveryTime = 5.0f;
+
+    Rigidbody m_pActiveRigidBody;
+    bool m_bCrouched = false;
+    int m_iGroundFrames = 0;
+    int m_iFramesSinceGround = 0;
+    int m_iCrouchedFrames = 0;
+    bool m_bWantsToCrouch = false;
+    int m_iJumpTimer = 0;
+    bool m_bSprinting = false;
+    Vector3 m_vGroundNormal;
     GameObject m_pUncrouchedObj;
     GameObject m_pCrouchedObj;
-    public Rigidbody m_pActiveRigidBody;
-    public Vector3 EyeLevel
-    {
-        get => m_bCrouched ? m_pActiveRigidBody.position : m_pActiveRigidBody.position + PLAYER_HEIGHT_CHANGE * Vector3.up;
-    }
-    public Dictionary<GameObject, Vector3[]> CollisionNormalsSet = new();
-    // Start is called before the first frame update
-    void Start()
+    Workstation m_pActiveWorkstation;
+    bool m_bPhysPaused = false;
+
+    void OnEnable()
     {
         m_pUncrouchedObj = GetComponentInChildren<PlayerUncrouchedPart>().gameObject;
         m_pCrouchedObj = GetComponentInChildren<PlayerCrouchedPart>( true ).gameObject;
         m_pActiveRigidBody = m_pUncrouchedObj.GetComponent<Rigidbody>();
-    }
-
-    void OnEnable()
-    {
         Physics.ContactEvent += Physics_ContactEvent;
     }
 
     private void Physics_ContactEvent( PhysicsScene scene, NativeArray<ContactPairHeader>.ReadOnly pHeaderArray )
     {
+        CollisionNormalsSet.Clear();
         foreach ( var Header in pHeaderArray )
         {
             Component rFirst = Header.Body;
@@ -102,30 +139,6 @@ public class PlayerBodyController : MonoBehaviour
             }
         }
     }
-
-    //public float m_fMouseSpeed = 1000.0f;
-    public float m_fLookSpeed = 10.0f;
-    public float m_fAirMoveFraction = 0.1f;
-    public float m_fMaxSpeed = 3.0f;
-    public float m_fMaxSprintSpeed = 6.0f;
-    public int m_iGroundThreshold = 1;
-    public float m_fFrictionConstant = 1.5f;
-    public int m_iCoyoteFrames = 2;
-    public Vector3 m_vGravity = -9.81f * Vector3.up;
-    public Vector3 m_vJumpVector = 4.0f * Vector3.up;
-    //public bool m_bEnableABH = true;
-    public float m_fMaxStamina = 1.0f;
-    public float m_fMinStamina = 0.05f;
-    public float m_fStamina = 1.0f;
-    public float m_fStaminaTime = 3.0f;
-    public float m_fStaminaRecoveryTime = 5.0f;
-    bool m_bCrouched = false;
-    int m_iGroundFrames = 0;
-    int m_iFramesSinceGround = 0;
-    int m_iCrouchedFrames = 0;
-    bool m_bWantsToCrouch = false;
-    int m_iJumpTimer = 0;
-    bool m_bSprinting = false;
 
     GameObject CheckGround()
     {
@@ -191,12 +204,45 @@ public class PlayerBodyController : MonoBehaviour
         else if ( Input.GetKeyUp( KeyCode.LeftShift ) )
             m_bSprinting = false;
 
+        if ( Input.GetKeyUp( KeyCode.E ) && m_pActiveWorkstation )
+            TogglePuzzleActive( m_pActiveWorkstation.m_iType );
+        if ( Input.GetKeyDown( KeyCode.Escape ) && m_pActiveWorkstation )
+            SetPuzzleActive( false, m_pActiveWorkstation.m_iType );
+
+
         GameObject.FindWithTag( "StaminaBar" ).GetComponent<Slider>().value = m_fStamina;
+
+        if ( ActiveRigidBody.position.y < 0 )
+        {
+            Debug.LogWarning( "Player fell through floor" );
+            ActiveRigidBody.position += ( PLAYER_HEIGHT_CHANGE + 2 * PLAYER_RADIUS + EPSILON ) * Vector3.up;
+        }
+    }
+
+    void TogglePuzzleActive( Puzzle iPuzzle )
+    {
+        bool bAlreadyActive = ( Workstation.g_iActivePuzzles & (int)iPuzzle ) != 0;
+        SetPuzzleActive( !bAlreadyActive, iPuzzle );
+    }
+
+    void SetPuzzleActive( bool bActive, Puzzle iPuzzle )
+    {
+        bool bAlreadyActive = ( Workstation.g_iActivePuzzles & (int)iPuzzle ) != 0;
+        if ( bAlreadyActive == bActive )
+            return; //nothing to do
+
+        if ( bActive )
+            Workstation.g_iActivePuzzles |= (int)iPuzzle;
+        else
+            Workstation.g_iActivePuzzles &= ~(int)iPuzzle;
+        
+        m_bPhysPaused = Workstation.g_iActivePuzzles != 0;
+        print( Workstation.g_iActivePuzzles );
     }
 
     void Friction()
     {
-        var pRigidBody = m_pActiveRigidBody;
+        var pRigidBody = ActiveRigidBody;
         if ( m_iGroundFrames > m_iGroundThreshold )
         {
             if ( pRigidBody.velocity.sqrMagnitude == 0.0f )
@@ -221,12 +267,12 @@ public class PlayerBodyController : MonoBehaviour
 
         GameObject pPreChangeObject = bCrouch ? m_pUncrouchedObj : m_pCrouchedObj;
         GameObject pPostChangeObject = bCrouch ? m_pCrouchedObj : m_pUncrouchedObj;
-        Vector3 vVelocity = m_pActiveRigidBody.velocity;
-        UnityEngine.Quaternion qRot = m_pActiveRigidBody.rotation;
+        Vector3 vVelocity = ActiveRigidBody.velocity;
+        UnityEngine.Quaternion qRot = ActiveRigidBody.rotation;
         Vector3 vPos = Vector3.zero;
         if ( !bCrouch )
         {
-            bool bHit = Physics.SphereCast( m_pActiveRigidBody.position + EPSILON * Vector3.up, PLAYER_RADIUS, -Vector3.up, out RaycastHit hitInfo, PLAYER_RADIUS + EPSILON, ~LayerMask.GetMask( "Player", "NoCollisionCallbacks" ) );
+            bool bHit = Physics.SphereCast( ActiveRigidBody.position + EPSILON * Vector3.up, PLAYER_RADIUS, -Vector3.up, out RaycastHit hitInfo, PLAYER_RADIUS + EPSILON, ~LayerMask.GetMask( "Player", "NoCollisionCallbacks" ) );
             if ( bHit )
                 vPos = hitInfo.point + PLAYER_UNCROUCHED_ORIGIN * Vector3.up;
             else
@@ -256,18 +302,21 @@ public class PlayerBodyController : MonoBehaviour
             }
         }
         m_pActiveRigidBody = pPostChangeObject.GetComponent<Rigidbody>();
-        m_pActiveRigidBody.velocity = vVelocity;
-        m_pActiveRigidBody.rotation = qRot;
-        m_pActiveRigidBody.position = vPos;
+        ActiveRigidBody.velocity = vVelocity;
+        ActiveRigidBody.rotation = qRot;
+        ActiveRigidBody.position = vPos;
 
         m_bCrouched = bCrouch;
     }
 
     void FixedUpdate()
     {
-        var pRigidBody = m_pActiveRigidBody;
+        if ( m_bPhysPaused )
+            return;
 
-        m_iGroundFrames = m_pGround != null ? m_iGroundFrames + 1 : 0;
+        var pRigidBody = ActiveRigidBody;
+
+        m_iGroundFrames = GroundEntity != null ? m_iGroundFrames + 1 : 0;
         m_iCrouchedFrames = m_iCrouchedFrames > 0 ? m_iCrouchedFrames + 1 : 0;
         m_iFramesSinceGround = m_iGroundFrames >= m_iGroundThreshold ? 0 : m_iFramesSinceGround + 1;
         m_iJumpTimer = m_iJumpTimer > 0 ? m_iJumpTimer - 1 : 0;
@@ -279,7 +328,7 @@ public class PlayerBodyController : MonoBehaviour
         {
             bool bCanChangeState = true;
             if ( !m_bWantsToCrouch )
-                bCanChangeState = !Physics.SphereCast( m_pActiveRigidBody.position - EPSILON * Vector3.up, PLAYER_RADIUS, Vector3.up, out RaycastHit __debug, PLAYER_HEIGHT_CHANGE + PLAYER_RADIUS + EPSILON, ~LayerMask.GetMask( "Player", "NoCollisionCallbacks" ) );
+                bCanChangeState = !Physics.SphereCast( ActiveRigidBody.position - EPSILON * Vector3.up, PLAYER_RADIUS, Vector3.up, out RaycastHit __debug, PLAYER_HEIGHT_CHANGE + PLAYER_RADIUS + EPSILON, ~LayerMask.GetMask( "Player", "NoCollisionCallbacks" ) );
 
             if ( bCanChangeState )
             {
