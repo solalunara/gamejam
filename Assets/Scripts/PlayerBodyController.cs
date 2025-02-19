@@ -207,6 +207,10 @@ public class PlayerBodyController : MonoBehaviour
         if ( !bChangingState )
             return;
 
+        // see PlayerJumpablePart.cs -> OnCollisionExit
+        foreach ( var CollisionNormals in CollisionNormalsSet )
+            CollisionNormals.Key.GetComponent<Collider>().providesContacts = false;
+
         GameObject pPreChangeObject = bCrouch ? m_pUncrouchedObj : m_pCrouchedObj;
         GameObject pPostChangeObject = bCrouch ? m_pCrouchedObj : m_pUncrouchedObj;
         Vector3 vVelocity = m_pActiveRigidBody.velocity;
