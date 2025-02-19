@@ -8,8 +8,8 @@ using Unity.Collections;
 using Unity.VersionControl.Git;
 using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.UIElements;
 using Vector3 = UnityEngine.Vector3;
+using Slider = UnityEngine.UI.Slider;
 
 public class PlayerBodyController : MonoBehaviour
 {
@@ -115,6 +115,7 @@ public class PlayerBodyController : MonoBehaviour
     public Vector3 m_vJumpVector = 4.0f * Vector3.up;
     //public bool m_bEnableABH = true;
     public float m_fMaxStamina = 1.0f;
+    public float m_fMinStamina = 0.05f;
     public float m_fStamina = 1.0f;
     public float m_fStaminaTime = 3.0f;
     public float m_fStaminaRecoveryTime = 5.0f;
@@ -189,6 +190,8 @@ public class PlayerBodyController : MonoBehaviour
             m_bSprinting = true;
         else if ( Input.GetKeyUp( KeyCode.LeftShift ) )
             m_bSprinting = false;
+
+        GameObject.FindWithTag( "StaminaBar" ).GetComponent<Slider>().value = m_fStamina;
     }
 
     void Friction()
@@ -309,12 +312,12 @@ public class PlayerBodyController : MonoBehaviour
         if ( m_iGroundFrames == 0 )
             WalkForce *= m_fAirMoveFraction;
 
-        if ( m_bSprinting && m_fStamina > 0.0f )
+        if ( m_bSprinting && m_fStamina > m_fMinStamina && WalkForce != Vector3.zero )
         {
             m_fStamina -= Time.fixedDeltaTime / m_fStaminaTime;
-            if ( m_fStamina < 0.0f )
+            if ( m_fStamina < m_fMinStamina )
             {
-                m_fStamina = 0.0f;
+                m_fStamina = m_fMinStamina;
                 m_bSprinting = false;
             }
         }
