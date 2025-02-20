@@ -26,7 +26,7 @@ public class CameraController : MonoBehaviour
     void Update()
     {
         Vector3 vPlanePos = Vector3.ProjectOnPlane( m_pPlayer.GetComponent<PlayerBodyController>().ActiveRigidBody.position, Vector3.up ) - m_pCamera.transform.parent.position;
-        m_pCamera.transform.LookAt( vPlanePos / 10 + m_pCamera.transform.parent.position + new Vector3( 0, 0, -5 ) );
+        m_pCamera.transform.LookAt( vPlanePos / 10 + m_pCamera.transform.parent.position + new Vector3( 0, 5, -5 ) );
         m_pPlayer.GetComponent<PlayerBodyController>().m_pInteractionPrompt.transform.rotation = Quaternion.LookRotation( m_pCamera.transform.forward );
     }
 }
