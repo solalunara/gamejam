@@ -10,7 +10,8 @@ public class PuzzleUI : MonoBehaviour
     public static Dictionary<Puzzle, PuzzleUI> g_pPuzzleUIElems = new();
     public static Dictionary<Puzzle, string> g_pPuzzleNames = new()
     {
-        {Puzzle.CULT_PUZZLE, "de-polarize neogenic collector"}
+        {Puzzle.CULT_PUZZLE, "de-polarize neogenic collector"},
+        {Puzzle.TEMP_PUZZLE, "technobabble nonsense" }
     };
     public static FaultListBody FaultList;
     public Puzzle m_iPuzzleID;
@@ -21,6 +22,9 @@ public class PuzzleUI : MonoBehaviour
         switch ( m_iPuzzleID )
         {
             case Puzzle.CULT_PUZZLE:
+                GetComponentInChildren<CultPuzzleBoard>().InitBoard();
+                break;
+            case Puzzle.TEMP_PUZZLE:
                 GetComponentInChildren<CultPuzzleBoard>().InitBoard();
                 break;
         }

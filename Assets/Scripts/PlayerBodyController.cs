@@ -5,7 +5,6 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using Unity.Collections;
-using Unity.VersionControl.Git;
 using Unity.VisualScripting;
 using UnityEngine;
 using Vector3 = UnityEngine.Vector3;
@@ -15,6 +14,7 @@ public enum Puzzle
 {
     NONE          = 0,
     CULT_PUZZLE   = 1<<0,
+    TEMP_PUZZLE   = 1<<1,
 }
 
 public class PlayerBodyController : MonoBehaviour
@@ -34,11 +34,6 @@ public class PlayerBodyController : MonoBehaviour
     {
         get => m_pActiveWorkstation;
         set => m_pActiveWorkstation = value;
-    }
-    public bool InputFrozen
-    {
-        get => m_bInputFrozen;
-        set => m_bInputFrozen = value;
     }
 
     public GameObject m_pInteractionPrompt;
@@ -72,7 +67,6 @@ public class PlayerBodyController : MonoBehaviour
     GameObject m_pUncrouchedObj;
     GameObject m_pCrouchedObj;
     Workstation m_pActiveWorkstation;
-    bool m_bInputFrozen = false;
 
     void OnEnable()
     {
@@ -228,12 +222,6 @@ public class PlayerBodyController : MonoBehaviour
         }
     }
 
-    void TogglePuzzleActive( Puzzle iPuzzle )
-    {
-        bool bAlreadyActive = ( Workstation.g_iActivePuzzles & (int)iPuzzle ) != 0;
-        SetPuzzleActive( !bAlreadyActive, iPuzzle );
-    }
-
     public void SetPuzzleActive( bool bActive, Puzzle iPuzzle )
     {
         bool bAlreadyActive = ( Workstation.g_iActivePuzzles & (int)iPuzzle ) != 0;
@@ -248,8 +236,6 @@ public class PlayerBodyController : MonoBehaviour
         m_pActiveWorkstation.SetUIElemActive( bActive );
         if ( bActive )
             m_pInteractionPrompt.SetActive( false );
-        
-        InputFrozen = Workstation.g_iActivePuzzles != 0;
     }
 
     public void SetAllPuzzlesInactive()
@@ -262,8 +248,6 @@ public class PlayerBodyController : MonoBehaviour
         Workstation[] pWorkstations = FindObjectsOfType<Workstation>();
         foreach ( var pWorkstation in pWorkstations )
             pWorkstation.SetUIElemActive( false );
-        
-        InputFrozen = false;
     }
 
     void Friction()
@@ -352,7 +336,7 @@ public class PlayerBodyController : MonoBehaviour
         pRigidBody.velocity += Time.fixedDeltaTime * m_vGravity;
         Friction();
 
-        if ( InputFrozen )
+        if ( Workstation.g_iActivePuzzles != 0 )
             return;
 
         if ( m_bWantsToCrouch != ( m_iCrouchedFrames > 0 ) ) //not using m_bCrouched to prevent multiple runs while waiting to crouch

@@ -32,6 +32,8 @@ public class FaultListBody : MonoBehaviour
 
     public void RemoveFault( int i )
     {
+        if ( i < 0 )
+            throw new Exception( "please help me" );
         ReactorBarController.ReactorState -= m_fTempDecreasePerComplete;
         m_pFaults.RemoveAt( i );
         int iBeginLineIndex = 0;
@@ -49,7 +51,7 @@ public class FaultListBody : MonoBehaviour
         }
         string sNewText = "";
         if ( iBeginLineIndex != 0 )
-            sNewText += m_pText.text[ ..iBeginLineIndex ];
+            sNewText += m_pText.text[ ..iBeginLineIndex ] + '\n';
         if ( iEndLineIndex != m_pText.text.Length - 1 )
             sNewText += m_pText.text[ (iEndLineIndex+1).. ];
         m_pText.text = sNewText;
