@@ -245,9 +245,12 @@ public class PlayerBodyController : MonoBehaviour
             Workstation.g_iActivePuzzles |= (int)iPuzzle;
         else
             Workstation.g_iActivePuzzles &= ~(int)iPuzzle;
+
+        m_pActiveWorkstation.UIElement.gameObject.SetActive( bActive );
+        if ( bActive )
+            m_pInteractionPrompt.SetActive( false );
         
         InputFrozen = Workstation.g_iActivePuzzles != 0;
-        print( Workstation.g_iActivePuzzles );
     }
 
     public void SetAllPuzzlesInactive()
@@ -257,9 +260,11 @@ public class PlayerBodyController : MonoBehaviour
             return; //nothing to do
 
         Workstation.g_iActivePuzzles = 0;
+        PuzzleUI[] pUIElements = FindObjectsOfType<PuzzleUI>();
+        foreach ( var pUIElement in pUIElements )
+            pUIElement.gameObject.SetActive( false );
         
         InputFrozen = false;
-        print( Workstation.g_iActivePuzzles );
     }
 
     void Friction()
