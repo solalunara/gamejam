@@ -68,6 +68,7 @@ public class CultPuzzleBoard : MonoBehaviour
         {
             m_pPuzzleButtonValues.Clear();
             FindObjectOfType<PlayerBodyController>().SetAllPuzzlesInactive();
+            PuzzleUI.g_pPuzzleUIElems[ Puzzle.CULT_PUZZLE ].Resolve();
         }
     }
 }
