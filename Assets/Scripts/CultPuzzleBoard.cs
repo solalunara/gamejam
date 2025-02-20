@@ -64,9 +64,12 @@ public class CultPuzzleBoard : MonoBehaviour
         for ( int i = 0; i < m_pPuzzleButtonValues.Count; ++i )
             m_pPuzzleButtonValues[ m_pPuzzleButtonValues.ElementAt( i ).Key ] &= ~(1<<2);
 
+        // clear the board on failure to prevent trial and error
+        m_pPuzzleButtonValues.Clear();
+        InitBoard();
+
         if ( bSuccess )
         {
-            m_pPuzzleButtonValues.Clear();
             FindObjectOfType<PuzzleUI>().Resolve();
             FindObjectOfType<PlayerBodyController>().SetAllPuzzlesInactive();
         }

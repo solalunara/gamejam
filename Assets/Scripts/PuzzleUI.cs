@@ -11,7 +11,7 @@ public class PuzzleUI : MonoBehaviour
     public static Dictionary<Puzzle, string> g_pPuzzleNames = new()
     {
         {Puzzle.CULT_PUZZLE, "de-polarize neogenic collector"},
-        {Puzzle.TEMP_PUZZLE, "technobabble nonsense" }
+        {Puzzle.TEMP_PUZZLE, "fix cadmium vacuum cruncher"}
     };
     public static FaultListBody FaultList;
     public Puzzle m_iPuzzleID;
