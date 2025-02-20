@@ -5,6 +5,9 @@ TagManager:
   serializedVersion: 2
   tags:
   - StaminaBar
+  - CultPuzzleBoard
+  - Lightup1
+  - Lightup2
   layers:
   - Default
   - TransparentFX

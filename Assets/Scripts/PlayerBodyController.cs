@@ -14,7 +14,7 @@ using Slider = UnityEngine.UI.Slider;
 public enum Puzzle
 {
     NONE          = 0,
-    TEMP_PUZZLE_A = 1<<0,
+    CULT_PUZZLE   = 1<<0,
     TEMP_PUZZLE_B = 1<<1
 }
 
@@ -246,7 +246,7 @@ public class PlayerBodyController : MonoBehaviour
         else
             Workstation.g_iActivePuzzles &= ~(int)iPuzzle;
 
-        m_pActiveWorkstation.UIElement.gameObject.SetActive( bActive );
+        m_pActiveWorkstation.SetUIElemActive( bActive );
         if ( bActive )
             m_pInteractionPrompt.SetActive( false );
         
@@ -260,9 +260,9 @@ public class PlayerBodyController : MonoBehaviour
             return; //nothing to do
 
         Workstation.g_iActivePuzzles = 0;
-        PuzzleUI[] pUIElements = FindObjectsOfType<PuzzleUI>();
-        foreach ( var pUIElement in pUIElements )
-            pUIElement.gameObject.SetActive( false );
+        Workstation[] pWorkstations = FindObjectsOfType<Workstation>();
+        foreach ( var pWorkstation in pWorkstations )
+            pWorkstation.SetUIElemActive( false );
         
         InputFrozen = false;
     }

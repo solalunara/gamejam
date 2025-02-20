@@ -1,19 +1,21 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PuzzleUI : MonoBehaviour
 {
     public Puzzle m_iPuzzleID;
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
 
-    // Update is called once per frame
-    void Update()
+    public void InitPuzzle()
     {
-        
+        switch ( m_iPuzzleID )
+        {
+            case Puzzle.CULT_PUZZLE:
+                GetComponentInChildren<CultPuzzleBoard>().InitBoard();
+                break;
+        }
     }
 }

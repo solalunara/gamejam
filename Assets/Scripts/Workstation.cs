@@ -7,26 +7,25 @@ public class Workstation : MonoBehaviour
 {
     public static int g_iActivePuzzles = 0;
     public Puzzle m_iType;
-    public PuzzleUI UIElement => m_pUIElement;
 
     PuzzleUI m_pUIElement;
 
     void OnEnable()
     {
-        if ( UIElement == null )
+        if ( m_pUIElement == null )
         {
             PuzzleUI[] pUIElements = FindObjectsOfType<PuzzleUI>( true );
             foreach ( var pUIElement in pUIElements )
             {
                 if ( pUIElement.m_iPuzzleID == m_iType )
                 {
-                    if ( UIElement == null )
+                    if ( m_pUIElement == null )
                         m_pUIElement = pUIElement;
                     else
                         throw new InvalidProgramException( "Too many puzzle UI elements for workstation " + this );
                 }
             }
-            if ( UIElement == null )
+            if ( m_pUIElement == null )
                 throw new InvalidProgramException( "No puzzle UI elements for workstation " + this );
         }
     }
@@ -61,5 +60,12 @@ public class Workstation : MonoBehaviour
             if ( p.m_pInteractionPrompt.activeSelf )
                 p.m_pInteractionPrompt.SetActive( false );
         }
+    }
+
+    public void SetUIElemActive( bool bActive )
+    {
+        m_pUIElement.gameObject.SetActive( bActive );
+        if ( bActive )
+            m_pUIElement.InitPuzzle();
     }
 }
