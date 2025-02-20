@@ -15,7 +15,6 @@ public enum Puzzle
 {
     NONE          = 0,
     CULT_PUZZLE   = 1<<0,
-    TEMP_PUZZLE_B = 1<<1
 }
 
 public class PlayerBodyController : MonoBehaviour

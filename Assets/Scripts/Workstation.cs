@@ -14,26 +14,30 @@ public class Workstation : MonoBehaviour
     {
         if ( m_pUIElement == null )
         {
-            PuzzleUI[] pUIElements = FindObjectsOfType<PuzzleUI>( true );
-            foreach ( var pUIElement in pUIElements )
+            if ( !PuzzleUI.g_pPuzzleUIElems.ContainsKey( m_iType ) )
             {
-                if ( pUIElement.m_iPuzzleID == m_iType )
+                PuzzleUI[] pUIs = FindObjectsOfType<PuzzleUI>( true );
+                foreach ( var pUI in pUIs )
                 {
-                    if ( m_pUIElement == null )
-                        m_pUIElement = pUIElement;
-                    else
-                        throw new InvalidProgramException( "Too many puzzle UI elements for workstation " + this );
+                    if ( pUI.m_iPuzzleID == m_iType )
+                    {
+                        if ( !PuzzleUI.g_pPuzzleUIElems.ContainsKey( m_iType ) )
+                            PuzzleUI.g_pPuzzleUIElems.Add( m_iType, pUI );
+                        else
+                            throw new InvalidProgramException( "Too many puzzle UIs for puzzle " + m_iType );
+                    }
                 }
+                if ( !PuzzleUI.g_pPuzzleUIElems.ContainsKey( m_iType ) )
+                    throw new InvalidProgramException( "No puzzle UIs for puzzle " + m_iType );
             }
-            if ( m_pUIElement == null )
-                throw new InvalidProgramException( "No puzzle UI elements for workstation " + this );
+            m_pUIElement = PuzzleUI.g_pPuzzleUIElems[ m_iType ];
         }
     }
 
     void OnTriggerEnter( Collider other )
     {
         PlayerBodyController p = other.GetComponentInParent<PlayerBodyController>();
-        if ( p )
+        if ( p && !m_pUIElement.Solved )
         {
             p.ActiveWorkstation = this;
             if ( !p.m_pInteractionPrompt.activeSelf && g_iActivePuzzles == 0 )
@@ -43,7 +47,7 @@ public class Workstation : MonoBehaviour
     void OnTriggerStay( Collider other )
     {
         PlayerBodyController p = other.GetComponentInParent<PlayerBodyController>();
-        if ( p )
+        if ( p && !m_pUIElement.Solved )
         {
             p.ActiveWorkstation = this;
             if ( !p.m_pInteractionPrompt.activeSelf && g_iActivePuzzles == 0 )
@@ -64,8 +68,9 @@ public class Workstation : MonoBehaviour
 
     public void SetUIElemActive( bool bActive )
     {
+        if ( m_pUIElement.Solved && bActive )
+            return; //don't pop up if this puzzle has been solved
+
         m_pUIElement.gameObject.SetActive( bActive );
-        if ( bActive )
-            m_pUIElement.InitPuzzle();
     }
 }
