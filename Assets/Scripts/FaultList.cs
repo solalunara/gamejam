@@ -9,11 +9,13 @@ public class FaultList : MonoBehaviour
     public float m_fTempDecreasePerComplete = 20.0f;
     public float m_fCharacteristicTime = 60.0f;
     public float m_fInitialTime = 60.0f;
+    public int CompletedTasks => m_iCompletedTasks;
     public float FaultCount => m_pFaults.Count;
     public bool CheckFault( Puzzle p ) => m_pFaults.Contains( p );
     public int GetPuzzleIndex( Puzzle p ) => m_pFaults.IndexOf( p );
     readonly List<Puzzle> m_pFaults = new();
     bool m_bRunningCoroutine = false;
+    int m_iCompletedTasks = 0;
 
     void OnEnable()
     {
@@ -36,8 +38,9 @@ public class FaultList : MonoBehaviour
     {
         if ( i < 0 )
             throw new Exception( "please help me" );
-
-        ReactorBarController.ReactorState -= m_fTempDecreasePerComplete;
+        
+        m_iCompletedTasks++;
+        g_fReactorState -= m_fTempDecreasePerComplete;
         m_pFaults.RemoveAt( i );
         int iBeginLineIndex = 0;
         int iEndLineIndex = 0;

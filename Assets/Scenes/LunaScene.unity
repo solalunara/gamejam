@@ -1627,7 +1627,7 @@ MonoBehaviour:
   m_MinValue: 0
   m_MaxValue: 100
   m_WholeNumbers: 0
-  m_Value: 43.2
+  m_Value: 0
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -1645,7 +1645,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_iMaxStable: 30
   m_fTempPerSecondPerFault: 0.1
-  m_fStartBlinking: 75
+  m_fStartBlinking: 0.75
 --- !u!1 &449336616
 GameObject:
   m_ObjectHideFlags: 0
@@ -5092,8 +5092,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_fTempDecreasePerComplete: 20
-  m_fCharacteristicTime: 60
-  m_fInitialTime: 60
+  m_fCharacteristicTime: 120
+  m_fInitialTime: 20
 --- !u!1 &1577685242
 GameObject:
   m_ObjectHideFlags: 0

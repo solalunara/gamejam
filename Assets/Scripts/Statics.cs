@@ -23,4 +23,5 @@ static class Statics
         {Puzzle.TEMP_PUZZLE, "fix cadmium vacuum cruncher"}
     };
     public static FaultList g_pFaultList;
+    public static float g_fReactorState = 0.0f;
 }

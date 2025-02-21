@@ -10,7 +10,7 @@ public class Score : MonoBehaviour
     // Start is called before the first frame update
     void OnEnable()
     {
-        m_fScore = Time.time - g_fStartTime;
+        m_fScore = g_pFaultList.CompletedTasks;
         GetComponent<TMP_Text>().text = m_fScore.ToString();
     }
 }
