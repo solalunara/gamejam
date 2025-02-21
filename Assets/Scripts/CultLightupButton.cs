@@ -38,11 +38,6 @@ public class CultLightupButton : MonoBehaviour, IPointerDownHandler, IPointerUpH
         }
     }
 
-    void OnEnable()
-    {
-        m_pPuzzleBoard = FindObjectOfType<CultPuzzleBoard>();
-    }
-
 
     // Update is called once per frame
     void Update()

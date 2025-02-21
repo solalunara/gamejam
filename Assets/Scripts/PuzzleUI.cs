@@ -18,7 +18,8 @@ public class PuzzleUI : MonoBehaviour
 
     public void Resolve()
     {
-        g_pFaultList.RemoveFault( g_pFaultList.GetPuzzleIndex( m_iPuzzleID ) );
+        GetComponentInParent<ScreenUI>().pPlayerOwner.SetAllPuzzlesInactive();
+        g_pFaultList.RemoveFault( g_pFaultList.GetPuzzleIndex( m_iPuzzleID ), true );
         if ( !Solved )
             InitPuzzle();
     }

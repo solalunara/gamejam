@@ -69,9 +69,6 @@ public class CultPuzzleBoard : MonoBehaviour, IPuzzleBoard
         InitBoard();
 
         if ( bSuccess )
-        {
-            FindObjectOfType<PuzzleUI>().Resolve();
-            FindObjectOfType<PlayerBodyController>().SetAllPuzzlesInactive();
-        }
+            GetComponentInParent<PuzzleUI>().Resolve();
     }
 }

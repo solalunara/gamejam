@@ -201,8 +201,8 @@ public class PlayerBodyController : MonoBehaviour
 
         if ( Input.GetKeyDown( KeyCode.E ) )
         {
-            if ( ActivePuzzles == 0 && m_pActiveWorkstation )
-                SetPuzzleActive( true, m_pActiveWorkstation.m_iType );
+            if ( ActivePuzzles == 0 && m_pActiveWorkstation && !m_pActiveWorkstation.Solved )
+                SetPuzzleActive( m_pActiveWorkstation.m_iType );
             else
                 SetAllPuzzlesInactive();
         }
@@ -219,20 +219,16 @@ public class PlayerBodyController : MonoBehaviour
         }
     }
 
-    public void SetPuzzleActive( bool bActive, Puzzle iPuzzle )
+    void SetPuzzleActive( Puzzle iPuzzle )
     {
         bool bAlreadyActive = ( ActivePuzzles & (int)iPuzzle ) != 0;
-        if ( bAlreadyActive == bActive )
+        if ( bAlreadyActive == true )
             return; //nothing to do
 
-        if ( bActive )
-            m_iActivePuzzles |= (int)iPuzzle;
-        else
-            m_iActivePuzzles &= ~(int)iPuzzle;
+        m_iActivePuzzles |= (int)iPuzzle;
 
-        m_pActiveWorkstation.SetUIElemActive( bActive );
-        if ( bActive )
-            m_pInteractionPrompt.SetActive( false );
+        m_pActiveWorkstation.SetUIElemActive( true );
+        m_pInteractionPrompt.SetActive( false );
     }
 
     public void SetAllPuzzlesInactive()
@@ -297,7 +293,7 @@ public class PlayerBodyController : MonoBehaviour
         m_pCrouchedObj.SetActive( bCrouch );
 
         CollisionNormalsSet.Clear();
-        FindObjectOfType<InteractPrompt>( true ).gameObject.SetActive( false );
+        m_pInteractionPrompt.SetActive( false );
 
         Transform[] pChildren = pPreChangeObject.GetComponentsInChildren<Transform>();
         foreach ( var pChild in pChildren )

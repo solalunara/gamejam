@@ -7,7 +7,7 @@ using static Statics;
 public class Workstation : MonoBehaviour
 {
     public Puzzle m_iType;
-
+    public bool Solved => m_pUIElement.Solved;
     PuzzleUI m_pUIElement;
 
     void OnEnable()
@@ -60,7 +60,7 @@ public class Workstation : MonoBehaviour
         if ( p )
         {
             p.ActiveWorkstation = null;
-            p.SetPuzzleActive( false, m_iType );
+            p.SetAllPuzzlesInactive();
             if ( p.m_pInteractionPrompt.activeSelf )
                 p.m_pInteractionPrompt.SetActive( false );
         }
