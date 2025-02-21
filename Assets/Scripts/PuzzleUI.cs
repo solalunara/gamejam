@@ -4,35 +4,21 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using static Statics;
 
 public class PuzzleUI : MonoBehaviour
 {
-    public static Dictionary<Puzzle, PuzzleUI> g_pPuzzleUIElems = new();
-    public static Dictionary<Puzzle, string> g_pPuzzleNames = new()
-    {
-        {Puzzle.CULT_PUZZLE, "de-polarize neogenic collector"},
-        {Puzzle.TEMP_PUZZLE, "fix cadmium vacuum cruncher"}
-    };
-    public static FaultListBody FaultList;
     public Puzzle m_iPuzzleID;
-    public bool Solved => !FaultList.m_pFaults.Contains( m_iPuzzleID );
+    public bool Solved => !g_pFaultList.CheckFault( m_iPuzzleID );
 
     public void InitPuzzle()
     {
-        switch ( m_iPuzzleID )
-        {
-            case Puzzle.CULT_PUZZLE:
-                GetComponentInChildren<CultPuzzleBoard>().InitBoard();
-                break;
-            case Puzzle.TEMP_PUZZLE:
-                GetComponentInChildren<CultPuzzleBoard>().InitBoard();
-                break;
-        }
+        GetComponentInChildren<IPuzzleBoard>().InitBoard();
     }
 
     public void Resolve()
     {
-        FaultList.RemoveFault( FaultList.m_pFaults.IndexOf( m_iPuzzleID ) );
+        g_pFaultList.RemoveFault( g_pFaultList.GetPuzzleIndex( m_iPuzzleID ) );
         if ( !Solved )
             InitPuzzle();
     }

@@ -2,10 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static Statics;
 
 public class Workstation : MonoBehaviour
 {
-    public static int g_iActivePuzzles = 0;
     public Puzzle m_iType;
 
     PuzzleUI m_pUIElement;
@@ -14,23 +14,23 @@ public class Workstation : MonoBehaviour
     {
         if ( m_pUIElement == null )
         {
-            if ( !PuzzleUI.g_pPuzzleUIElems.ContainsKey( m_iType ) )
+            if ( !g_mapPuzzleUIElems.ContainsKey( m_iType ) )
             {
                 PuzzleUI[] pUIs = FindObjectsOfType<PuzzleUI>( true );
                 foreach ( var pUI in pUIs )
                 {
                     if ( pUI.m_iPuzzleID == m_iType )
                     {
-                        if ( !PuzzleUI.g_pPuzzleUIElems.ContainsKey( m_iType ) )
-                            PuzzleUI.g_pPuzzleUIElems.Add( m_iType, pUI );
+                        if ( !g_mapPuzzleUIElems.ContainsKey( m_iType ) )
+                            g_mapPuzzleUIElems.Add( m_iType, pUI );
                         else
                             throw new InvalidProgramException( "Too many puzzle UIs for puzzle " + m_iType );
                     }
                 }
-                if ( !PuzzleUI.g_pPuzzleUIElems.ContainsKey( m_iType ) )
+                if ( !g_mapPuzzleUIElems.ContainsKey( m_iType ) )
                     throw new InvalidProgramException( "No puzzle UIs for puzzle " + m_iType );
             }
-            m_pUIElement = PuzzleUI.g_pPuzzleUIElems[ m_iType ];
+            m_pUIElement = g_mapPuzzleUIElems[ m_iType ];
         }
     }
 
@@ -40,7 +40,7 @@ public class Workstation : MonoBehaviour
         if ( p && !m_pUIElement.Solved )
         {
             p.ActiveWorkstation = this;
-            if ( !p.m_pInteractionPrompt.activeSelf && g_iActivePuzzles == 0 )
+            if ( !p.m_pInteractionPrompt.activeSelf && p.ActivePuzzles == 0 )
                 p.m_pInteractionPrompt.SetActive( true );
         }
     }
@@ -50,7 +50,7 @@ public class Workstation : MonoBehaviour
         if ( p && !m_pUIElement.Solved )
         {
             p.ActiveWorkstation = this;
-            if ( !p.m_pInteractionPrompt.activeSelf && g_iActivePuzzles == 0 )
+            if ( !p.m_pInteractionPrompt.activeSelf && p.ActivePuzzles == 0 )
                 p.m_pInteractionPrompt.SetActive( true );
         }
     }

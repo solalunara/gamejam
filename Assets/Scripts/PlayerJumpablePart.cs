@@ -9,18 +9,6 @@ using Vector3 = UnityEngine.Vector3;
 
 public class PlayerJumpablePart : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-
     void OnCollisionEnter( Collision c )
     {
         // providesContacts must be turned on for Physics.ContactEvent to be called

@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class CultPuzzleBoard : MonoBehaviour
+public class CultPuzzleBoard : MonoBehaviour, IPuzzleBoard
 {
     public Dictionary<Button, int> m_pPuzzleButtonValues = new();
     const int NUM_WHITE = 3;

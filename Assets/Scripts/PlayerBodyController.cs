@@ -9,13 +9,7 @@ using Unity.VisualScripting;
 using UnityEngine;
 using Vector3 = UnityEngine.Vector3;
 using Slider = UnityEngine.UI.Slider;
-
-public enum Puzzle
-{
-    NONE          = 0,
-    CULT_PUZZLE   = 1<<0,
-    TEMP_PUZZLE   = 1<<1,
-}
+using static Statics;
 
 public class PlayerBodyController : MonoBehaviour
 {
@@ -35,6 +29,8 @@ public class PlayerBodyController : MonoBehaviour
         get => m_pActiveWorkstation;
         set => m_pActiveWorkstation = value;
     }
+
+    public int ActivePuzzles => m_iActivePuzzles;
 
     public GameObject m_pInteractionPrompt;
 
@@ -67,6 +63,7 @@ public class PlayerBodyController : MonoBehaviour
     GameObject m_pUncrouchedObj;
     GameObject m_pCrouchedObj;
     Workstation m_pActiveWorkstation;
+    int m_iActivePuzzles = 0;
 
     void OnEnable()
     {
@@ -204,7 +201,7 @@ public class PlayerBodyController : MonoBehaviour
 
         if ( Input.GetKeyDown( KeyCode.E ) )
         {
-            if ( Workstation.g_iActivePuzzles == 0 && m_pActiveWorkstation )
+            if ( ActivePuzzles == 0 && m_pActiveWorkstation )
                 SetPuzzleActive( true, m_pActiveWorkstation.m_iType );
             else
                 SetAllPuzzlesInactive();
@@ -224,14 +221,14 @@ public class PlayerBodyController : MonoBehaviour
 
     public void SetPuzzleActive( bool bActive, Puzzle iPuzzle )
     {
-        bool bAlreadyActive = ( Workstation.g_iActivePuzzles & (int)iPuzzle ) != 0;
+        bool bAlreadyActive = ( ActivePuzzles & (int)iPuzzle ) != 0;
         if ( bAlreadyActive == bActive )
             return; //nothing to do
 
         if ( bActive )
-            Workstation.g_iActivePuzzles |= (int)iPuzzle;
+            m_iActivePuzzles |= (int)iPuzzle;
         else
-            Workstation.g_iActivePuzzles &= ~(int)iPuzzle;
+            m_iActivePuzzles &= ~(int)iPuzzle;
 
         m_pActiveWorkstation.SetUIElemActive( bActive );
         if ( bActive )
@@ -240,11 +237,11 @@ public class PlayerBodyController : MonoBehaviour
 
     public void SetAllPuzzlesInactive()
     {
-        bool bAlreadyActive = Workstation.g_iActivePuzzles != 0;
+        bool bAlreadyActive = ActivePuzzles != 0;
         if ( bAlreadyActive == false )
             return; //nothing to do
 
-        Workstation.g_iActivePuzzles = 0;
+        m_iActivePuzzles = 0;
         Workstation[] pWorkstations = FindObjectsOfType<Workstation>();
         foreach ( var pWorkstation in pWorkstations )
             pWorkstation.SetUIElemActive( false );
@@ -336,7 +333,7 @@ public class PlayerBodyController : MonoBehaviour
         pRigidBody.velocity += Time.fixedDeltaTime * m_vGravity;
         Friction();
 
-        if ( Workstation.g_iActivePuzzles != 0 )
+        if ( ActivePuzzles != 0 )
             return;
 
         if ( m_bWantsToCrouch != ( m_iCrouchedFrames > 0 ) ) //not using m_bCrouched to prevent multiple runs while waiting to crouch

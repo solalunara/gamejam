@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using static Statics;
 
 public class Score : MonoBehaviour
 {
@@ -9,7 +10,7 @@ public class Score : MonoBehaviour
     // Start is called before the first frame update
     void OnEnable()
     {
-        m_fScore = Time.time - FaultListBody.StartTime;
+        m_fScore = Time.time - g_fStartTime;
         GetComponent<TMP_Text>().text = m_fScore.ToString();
     }
 }

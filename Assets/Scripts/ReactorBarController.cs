@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using static Statics;
 
 public class ReactorBarController : MonoBehaviour
 {
@@ -27,7 +28,7 @@ public class ReactorBarController : MonoBehaviour
         // method 1:
         //m_fReactorState = Mathf.Lerp( m_fReactorState, PuzzleUI.FaultList.m_pFaults.Count * 100.0f / m_iMaxStable, Time.deltaTime );
         // method 2:
-        ReactorState += Mathf.Pow( PuzzleUI.FaultList.m_pFaults.Count, 1.1f ) * Time.deltaTime * m_fTempPerSecondPerFault;
+        ReactorState += Mathf.Pow( g_pFaultList.FaultCount, 1.1f ) * Time.deltaTime * m_fTempPerSecondPerFault;
         m_pSlider.value = Mathf.Lerp( m_pSlider.value, ReactorState, Time.deltaTime );
 
         if ( ReactorState > 100.0f )
