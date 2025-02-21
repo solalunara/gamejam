@@ -1,0 +1,7 @@
+To add a new puzzle:
+1/ Go to Statics.cs and add an enum for you puzzle onto the end, following the existing pattern
+2/ Add a key/value pair to the puzzle/string dictionary, where the string is the title that will appear for the player
+3/ Add a UI element under Puzzles Master Pt, using the puzzles UI script, and set the enum in the script with the dropdown to your puzzle
+4/ Add a 'puzzle board' element under the puzzle that has a script which implements the IPuzzleBoard interface
+
+For an example, see the existing CultPuzzle UI element as well as CultPuzzleBoard.cs
