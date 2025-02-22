@@ -13,7 +13,7 @@ public class PuzzleUI : MonoBehaviour
 
     public void InitPuzzle()
     {
-        GetComponentInChildren<IPuzzleBoard>().InitBoard();
+        GetComponentInChildren<PuzzleBoard>().InitBoard();
     }
 
     public void Resolve()

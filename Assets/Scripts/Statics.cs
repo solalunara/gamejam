@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 public enum Puzzle
 {
@@ -18,9 +19,10 @@ public enum Room
     REACTOR     = 1<<4
 }
 
-public interface IPuzzleBoard
+public abstract class PuzzleBoard : MonoBehaviour
 {
-    public void InitBoard();
+    public abstract void InitBoard();
+    public void Resolve() => GetComponentInParent<PuzzleUI>().Resolve();
 }
 
 static class Statics
