@@ -68,9 +68,14 @@ public class FaultList : MonoBehaviour
         if ( i < 0 )
             throw new ArgumentOutOfRangeException(nameof(i));
         
-        m_iCompletedTasks++;
+        if ( bSuccess )
+            m_iCompletedTasks++;
         g_fReactorState += !bSuccess ? m_fTempIncreasePerFail : -m_fTempDecreasePerComplete;
         m_pRecentlyCompletedTasks.Add( (m_pFaults[ i ].Item1, 0.0f) );
+        g_mapRoomFaultAlerts[ g_mapPuzzleRooms[ m_pFaults[ i ].Item1 ] ].gameObject.SetActive( false );
+        foreach ( var pWorkstation in FindObjectsOfType<Workstation>() )
+            if ( pWorkstation.m_iType == m_pFaults[ i ].Item1 )
+                pWorkstation.SetAlertActive( false );
         m_pFaults.RemoveAt( i );
         m_pFaults.Sort();
     }
@@ -104,6 +109,10 @@ public class FaultList : MonoBehaviour
             pUI.InitPuzzle();
             m_pFaults.Add( (p, m_fPuzzleTime) );
             m_pFaults.Sort();
+            g_mapRoomFaultAlerts[ g_mapPuzzleRooms[ p ] ].gameObject.SetActive( true );
+            foreach ( var pWorkstation in FindObjectsOfType<Workstation>() )
+                if ( pWorkstation.m_iType == p )
+                    pWorkstation.SetAlertActive( true );
             yield return new WaitForSeconds( fTimeToNextFault );
         }
     }

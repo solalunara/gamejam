@@ -22,7 +22,7 @@ public class CultPuzzleBoard : MonoBehaviour, IPuzzleBoard
             if ( m_iNumClicked == NUM_WHITE )
                 ResolveBoard( true );
         }
-        else
+        else if ( ( iValue & 1<<2 ) == 0 )
             ResolveBoard( false );
     }
 
