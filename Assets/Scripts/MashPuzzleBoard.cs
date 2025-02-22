@@ -12,7 +12,7 @@ public class MashPuzzleBoard : PuzzleBoard
 
     public override void InitBoard()
     {
-        m_pSlider = FindObjectOfType<MashPuzzleSlider>( true ).GetComponent<Slider>();
+        m_pSlider = GetComponentInChildren<Slider>( true );
         m_fValue = 0.0f;
         m_pSlider.maxValue = Mathf.Sqrt( m_fNumClicks );
         m_pSlider.minValue = 0.0f;

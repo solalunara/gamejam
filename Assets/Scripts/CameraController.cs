@@ -18,8 +18,7 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    // Start is called before the first frame update
-    void Start()
+    void OnEnable()
     {
         m_pCamera = GetComponentInChildren<Camera>();
     }
@@ -29,7 +28,7 @@ public class CameraController : MonoBehaviour
     {
         Vector3 vPlanePos = Vector3.ProjectOnPlane( m_pPlayer.GetComponent<PlayerBodyController>().ActiveRigidBody.position, Vector3.up ) - m_pCamera.transform.parent.position;
         transform.rotation = Quaternion.identity;
-        if ( m_pCameraReference.GetComponent<CameraReference>().m_bMoveCameraNearBottom )
+        if ( m_pCameraReference && m_pCameraReference.GetComponent<CameraReference>().m_bMoveCameraNearBottom )
             if ( vPlanePos.z < m_fStartRotatingZ )
                 transform.rotation = Quaternion.AngleAxis( Mathf.LerpAngle( 0.0f, 90.0f, Mathf.Min( ( -vPlanePos.z - -m_fStartRotatingZ ) / ( m_fStartRotatingZ - m_fEndRotatingZ ), 1.0f ) ), Vector3.up );
         m_pCamera.transform.LookAt( vPlanePos / 5 + m_pCamera.transform.parent.position + new Vector3( 0, 5, -5 ) );

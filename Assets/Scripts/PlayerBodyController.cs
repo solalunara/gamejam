@@ -256,6 +256,16 @@ public class PlayerBodyController : MonoBehaviour
         foreach ( var pWorkstation in pWorkstations )
             pWorkstation.SetUIElemActive( false );
     }
+    public void SetPuzzleInactive( Puzzle iPuzzle )
+    {
+        bool bAlreadyActive = ( ActivePuzzles & (int)iPuzzle ) != 0;
+        if ( bAlreadyActive == false )
+            return; //nothing to do
+
+        m_iActivePuzzles &= ~(int)iPuzzle;
+
+        m_pActiveWorkstation.SetUIElemActive( false );
+    }
 
     void Friction()
     {

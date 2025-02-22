@@ -17,8 +17,7 @@ public class ReactorBarController : MonoBehaviour
     Slider m_pSlider;
     RawImage m_pPointer;
     bool m_bBlinking = false;
-    // Start is called before the first frame update
-    void Start()
+    void OnEnable()
     {
         m_pSlider = GetComponent<Slider>();
         m_pSlider.maxValue = 1.0f;
@@ -39,6 +38,9 @@ public class ReactorBarController : MonoBehaviour
 
         if ( m_pSlider.value >= 1.0f )
             SceneManager.LoadScene( "GameOverScene" );
+
+        if ( m_pSlider.value >= m_fStartBlinking )
+            g_pFaultList.ActivateFault( Puzzle.BUNKER_PUZZLE );
 
         if ( m_pSlider.value >= m_fStartBlinking )
         {

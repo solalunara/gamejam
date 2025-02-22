@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using static Statics;
 
@@ -18,6 +19,12 @@ public class PuzzleUI : MonoBehaviour
 
     public void Resolve()
     {
+        if ( m_iPuzzleID == Puzzle.BUNKER_PUZZLE )
+        {
+            g_bMadeItToBunker = true;
+            SceneManager.LoadScene( "GameOverScene" );
+            return;
+        }
         GetComponentInParent<ScreenUI>().pPlayerOwner.SetAllPuzzlesInactive();
         g_pFaultList.RemoveFault( g_pFaultList.GetPuzzleIndex( m_iPuzzleID ), true );
         if ( !Solved )
