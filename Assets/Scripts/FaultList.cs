@@ -72,7 +72,10 @@ public class FaultList : MonoBehaviour
             m_iCompletedTasks++;
         g_fReactorState += !bSuccess ? m_fTempIncreasePerFail : -m_fTempDecreasePerComplete;
         m_pRecentlyCompletedTasks.Add( (m_pFaults[ i ].Item1, 0.0f) );
-        g_mapRoomFaultAlerts[ g_mapPuzzleRooms[ m_pFaults[ i ].Item1 ] ].gameObject.SetActive( false );
+        Room r = g_mapPuzzleRooms[ m_pFaults[ i ].Item1 ];
+        foreach ( var pFlash in FindObjectsOfType<Flash>( true ) )
+            if ( pFlash.m_iRoom == r )
+                pFlash.gameObject.SetActive( false );
         foreach ( var pWorkstation in FindObjectsOfType<Workstation>() )
             if ( pWorkstation.m_iType == m_pFaults[ i ].Item1 )
                 pWorkstation.SetAlertActive( false );
@@ -109,7 +112,10 @@ public class FaultList : MonoBehaviour
             pUI.InitPuzzle();
             m_pFaults.Add( (p, m_fPuzzleTime) );
             m_pFaults.Sort();
-            g_mapRoomFaultAlerts[ g_mapPuzzleRooms[ p ] ].gameObject.SetActive( true );
+            Room r = g_mapPuzzleRooms[ p ];
+            foreach ( var pFlash in FindObjectsOfType<Flash>( true ) )
+                if ( pFlash.m_iRoom == r )
+                    pFlash.gameObject.SetActive( true );
             foreach ( var pWorkstation in FindObjectsOfType<Workstation>() )
                 if ( pWorkstation.m_iType == p )
                     pWorkstation.SetAlertActive( true );

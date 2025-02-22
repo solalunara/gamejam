@@ -36,22 +36,6 @@ public class Workstation : MonoBehaviour
             }
             m_pUIElement = g_mapPuzzleUIElems[ m_iType ];
         }
-        if ( !g_mapRoomFaultAlerts.ContainsKey( m_iRoom ) )
-        {
-                Flash[] pFlashes = FindObjectsOfType<Flash>( true );
-                foreach ( var pFlash in pFlashes )
-                {
-                    if ( pFlash.m_iRoom == m_iRoom )
-                    {
-                        if ( !g_mapRoomFaultAlerts.ContainsKey( m_iRoom ) )
-                            g_mapRoomFaultAlerts.Add( m_iRoom, pFlash );
-                        else
-                            throw new InvalidProgramException( "Too many RoomAlerts for room " + m_iRoom );
-                    }
-                }
-                if ( !g_mapRoomFaultAlerts.ContainsKey( m_iRoom ) )
-                    throw new InvalidProgramException( "No RoomAlerts for room " + m_iRoom );
-        }
         if ( !g_mapPuzzleRooms.ContainsKey( m_iType ) )
             g_mapPuzzleRooms.Add( m_iType, m_iRoom );
         else if ( g_mapPuzzleRooms[ m_iType ] != m_iRoom )

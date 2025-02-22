@@ -5,6 +5,7 @@ public enum Puzzle
     NONE          = 0,
     CULT_PUZZLE   = 1<<0,
     TEMP_PUZZLE   = 1<<1,
+    BOTTOM_PUZZLE = 1<<2,
 }
 
 public enum Room
@@ -29,11 +30,11 @@ static class Statics
     public static Dictionary<Puzzle, PuzzleUI> g_mapPuzzleUIElems = new();
     public static Dictionary<Puzzle, Room> g_mapPuzzleRooms = new();
     public static Dictionary<Puzzle, Workstation> g_mapWorkstations = new();
-    public static Dictionary<Room, Flash> g_mapRoomFaultAlerts = new();
     public static Dictionary<Puzzle, string> g_mapPuzzleNames = new()
     {
         {Puzzle.CULT_PUZZLE, "de-polarize neogenic collector"},
-        {Puzzle.TEMP_PUZZLE, "fix cadmium vacuum cruncher"}
+        {Puzzle.TEMP_PUZZLE, "fix cadmium vacuum cruncher"},
+        {Puzzle.BOTTOM_PUZZLE, "restart wifi router" }
     };
     public static FaultList g_pFaultList;
     public static float g_fReactorState = 0.0f;
