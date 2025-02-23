@@ -26,7 +26,7 @@ public class StartScreenButtons : MonoBehaviour
         g_mapPuzzleUIElems.Clear();
         g_mapPuzzleRooms.Clear();
         g_mapWorkstations.Clear();
-        SceneManager.LoadScene( "LunaScene" );
+        SceneManager.LoadScene( "LunaScene2" );
     }
 
     public void Quit()

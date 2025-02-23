@@ -14,6 +14,8 @@ public class CodeNote : MonoBehaviour
 
     public void UpdateText2( string s )
     {
+        if ( !m_pText )
+            m_pText = GetComponent<TMP_Text>();
         m_pText.text = s;
     }
     
