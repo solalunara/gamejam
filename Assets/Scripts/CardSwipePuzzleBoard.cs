@@ -28,7 +28,7 @@ public class CardSwipePuzzleBoard : PuzzleBoard
     public override void InitBoard()
     {
         m_pSlider = GetComponentInChildren<Slider>( true );
-        transform.parent.GetComponentInChildren<CardPuzzleFeedback>().UpdateText( "" );
+        transform.parent.GetComponentInChildren<CardPuzzleFeedback>( true ).UpdateText( "" );
     }
 
     // Update is called once per frame

@@ -13,6 +13,8 @@ public class CardPuzzleFeedback : MonoBehaviour
 
     public void UpdateText( string s )
     {
+        if ( !m_pText )
+            m_pText = GetComponent<TMP_Text>();
         m_pText.text = s;
     }
 }
