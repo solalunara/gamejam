@@ -151,6 +151,7 @@ public class FaultList : MonoBehaviour
                 continue;
             }
 
+            FindObjectOfType<Alarm>( true ).gameObject.SetActive( true );
             int iPuzzleNum = UnityEngine.Random.Range( 0, pAvaliableFaults.Count );
             ActivateFault( pAvaliableFaults[ iPuzzleNum ] );
             yield return new WaitForSeconds( fTimeToNextFault );

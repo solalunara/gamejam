@@ -406,7 +406,7 @@ public class PlayerBodyController : MonoBehaviour
         }
 
         if ( WalkForce != Vector3.zero )
-            pRigidBody.rotation = UnityEngine.Quaternion.LookRotation( WalkForce );
+            pRigidBody.rotation = UnityEngine.Quaternion.LookRotation( WalkForce ) * UnityEngine.Quaternion.AngleAxis( 90.0f, Vector3.up );
 
         if ( m_iGroundFrames == 0 )
             WalkForce *= m_fAirMoveFraction;
