@@ -13,9 +13,9 @@ using static Statics;
 
 public class PlayerBodyController : MonoBehaviour
 {
-    float PLAYER_RADIUS;
-    float PLAYER_UNCROUCHED_ORIGIN;
-    float PLAYER_HEIGHT_CHANGE;
+    const float PLAYER_RADIUS = 0.5f;
+    const float PLAYER_UNCROUCHED_ORIGIN = 1.0f;
+    const float PLAYER_HEIGHT_CHANGE = PLAYER_UNCROUCHED_ORIGIN - PLAYER_RADIUS;
     const float EPSILON = 0.1f;
 
 
@@ -85,12 +85,6 @@ public class PlayerBodyController : MonoBehaviour
         }
         if ( !g_mapPlayerControllerMap.ContainsKey( this ) )
             throw new InvalidProgramException( "No camera controller for player " + this );
-
-        float __x = m_pCrouchedObj.GetComponent<SphereCollider>().radius;
-        float __y = m_pUncrouchedObj.GetComponent<Collider>().bounds.extents.y;
-        PLAYER_RADIUS = m_pCrouchedObj.transform.lossyScale.x * __x;
-        PLAYER_UNCROUCHED_ORIGIN = 2*__y - PLAYER_RADIUS;
-        PLAYER_HEIGHT_CHANGE = PLAYER_UNCROUCHED_ORIGIN - PLAYER_RADIUS;
     }
 
     private void Physics_ContactEvent( PhysicsScene scene, NativeArray<ContactPairHeader>.ReadOnly pHeaderArray )
@@ -207,12 +201,12 @@ public class PlayerBodyController : MonoBehaviour
             m_pCamera.transform.parent.Rotate( new Vector3( 1, 0, 0 ), y * m_fMouseSpeed * Time.deltaTime, Space.Self );
             transform.Rotate( new Vector3( 0, 1, 0 ), x * m_fMouseSpeed * Time.deltaTime, Space.World );
         }
+        */
 
         if ( Input.GetKeyDown( KeyCode.LeftControl ) )
             m_bWantsToCrouch = true;
         else if ( Input.GetKeyUp( KeyCode.LeftControl ) )
             m_bWantsToCrouch = false;
-        */
 
         if ( Input.GetKeyDown( KeyCode.LeftShift ) )
             m_bSprinting = true;
@@ -305,7 +299,7 @@ public class PlayerBodyController : MonoBehaviour
         Vector3 vPos;
         if ( !bCrouch )
         {
-            bool bHit = Physics.SphereCast( ActiveRigidBody.position + EPSILON * Vector3.up, PLAYER_RADIUS, -Vector3.up, out RaycastHit hitInfo, PLAYER_RADIUS + 2 * EPSILON, ~LayerMask.GetMask( "Player", "NoCollisionCallbacks" ) );
+            bool bHit = Physics.SphereCast( ActiveRigidBody.position + EPSILON * Vector3.up, PLAYER_RADIUS, -Vector3.up, out RaycastHit hitInfo, PLAYER_RADIUS + EPSILON, ~LayerMask.GetMask( "Player", "NoCollisionCallbacks" ) );
             if ( bHit )
                 vPos = hitInfo.point + PLAYER_UNCROUCHED_ORIGIN * Vector3.up;
             else
