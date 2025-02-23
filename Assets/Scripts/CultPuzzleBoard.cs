@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class CultPuzzleBoard : MonoBehaviour, IPuzzleBoard
+public class CultPuzzleBoard : PuzzleBoard
 {
     public Dictionary<Button, int> m_pPuzzleButtonValues = new();
     const int NUM_WHITE = 3;
@@ -22,12 +22,12 @@ public class CultPuzzleBoard : MonoBehaviour, IPuzzleBoard
             if ( m_iNumClicked == NUM_WHITE )
                 ResolveBoard( true );
         }
-        else
+        else if ( ( iValue & 1<<2 ) == 0 )
             ResolveBoard( false );
     }
 
 
-    public void InitBoard()
+    public override void InitBoard()
     {
         if ( m_pPuzzleButtonValues.Any() )
             return; //nothing to init
@@ -69,6 +69,6 @@ public class CultPuzzleBoard : MonoBehaviour, IPuzzleBoard
         InitBoard();
 
         if ( bSuccess )
-            GetComponentInParent<PuzzleUI>().Resolve();
+            Resolve();
     }
 }

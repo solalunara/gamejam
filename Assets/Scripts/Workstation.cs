@@ -2,16 +2,20 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using static Statics;
 
 public class Workstation : MonoBehaviour
 {
     public Puzzle m_iType;
+    public Room m_iRoom;
     public bool Solved => m_pUIElement.Solved;
     PuzzleUI m_pUIElement;
+    RawImage m_pAlertAbove;
 
     void OnEnable()
     {
+        m_pAlertAbove = GetComponentInChildren<RawImage>( true );
         if ( m_pUIElement == null )
         {
             if ( !g_mapPuzzleUIElems.ContainsKey( m_iType ) )
@@ -32,6 +36,10 @@ public class Workstation : MonoBehaviour
             }
             m_pUIElement = g_mapPuzzleUIElems[ m_iType ];
         }
+        if ( !g_mapPuzzleRooms.ContainsKey( m_iType ) )
+            g_mapPuzzleRooms.Add( m_iType, m_iRoom );
+        else if ( g_mapPuzzleRooms[ m_iType ] != m_iRoom )
+            throw new InvalidProgramException( "Differing rooms for puzzle " + m_iType );
     }
 
     void OnTriggerEnter( Collider other )
@@ -64,6 +72,11 @@ public class Workstation : MonoBehaviour
             if ( p.m_pInteractionPrompt.activeSelf )
                 p.m_pInteractionPrompt.SetActive( false );
         }
+    }
+
+    public void SetAlertActive( bool bActive )
+    {
+        m_pAlertAbove.gameObject.SetActive( bActive );
     }
 
     public void SetUIElemActive( bool bActive )

@@ -71,6 +71,20 @@ public class PlayerBodyController : MonoBehaviour
         m_pCrouchedObj = GetComponentInChildren<PlayerCrouchedPart>( true ).gameObject;
         m_pActiveRigidBody = m_pUncrouchedObj.GetComponent<Rigidbody>();
         Physics.ContactEvent += Physics_ContactEvent;
+
+        CameraController[] pControllers = FindObjectsOfType<CameraController>();
+        foreach ( var pController in pControllers )
+        {
+            if ( pController.m_pPlayer == gameObject )
+            {
+                if ( !g_mapPlayerControllerMap.ContainsKey( this ) )
+                    g_mapPlayerControllerMap.Add( this, pController );
+                else
+                    throw new InvalidProgramException( "Too many camera controllers for player " + this );
+            }
+        }
+        if ( !g_mapPlayerControllerMap.ContainsKey( this ) )
+            throw new InvalidProgramException( "No camera controller for player " + this );
     }
 
     private void Physics_ContactEvent( PhysicsScene scene, NativeArray<ContactPairHeader>.ReadOnly pHeaderArray )
@@ -242,6 +256,16 @@ public class PlayerBodyController : MonoBehaviour
         foreach ( var pWorkstation in pWorkstations )
             pWorkstation.SetUIElemActive( false );
     }
+    public void SetPuzzleInactive( Puzzle iPuzzle )
+    {
+        bool bAlreadyActive = ( ActivePuzzles & (int)iPuzzle ) != 0;
+        if ( bAlreadyActive == false )
+            return; //nothing to do
+
+        m_iActivePuzzles &= ~(int)iPuzzle;
+
+        m_pActiveWorkstation.SetUIElemActive( false );
+    }
 
     void Friction()
     {
@@ -272,7 +296,7 @@ public class PlayerBodyController : MonoBehaviour
         GameObject pPostChangeObject = bCrouch ? m_pCrouchedObj : m_pUncrouchedObj;
         Vector3 vVelocity = ActiveRigidBody.velocity;
         UnityEngine.Quaternion qRot = ActiveRigidBody.rotation;
-        Vector3 vPos = Vector3.zero;
+        Vector3 vPos;
         if ( !bCrouch )
         {
             bool bHit = Physics.SphereCast( ActiveRigidBody.position + EPSILON * Vector3.up, PLAYER_RADIUS, -Vector3.up, out RaycastHit hitInfo, PLAYER_RADIUS + EPSILON, ~LayerMask.GetMask( "Player", "NoCollisionCallbacks" ) );
@@ -329,6 +353,29 @@ public class PlayerBodyController : MonoBehaviour
         pRigidBody.velocity += Time.fixedDeltaTime * m_vGravity;
         Friction();
 
+        //try to walk
+        Vector3 WalkForce = Vector3.zero;
+        if ( Input.GetKey( KeyCode.W ) )
+            WalkForce += Vector3.forward;
+        if ( Input.GetKey( KeyCode.S ) )
+            WalkForce -= Vector3.forward;
+        if ( Input.GetKey( KeyCode.D ) )
+            WalkForce += Vector3.right;
+        if ( Input.GetKey( KeyCode.A ) )
+            WalkForce -= Vector3.right;
+        WalkForce = WalkForce.normalized;
+
+        // stamina should recover if
+        //  1/ the player is not sprinting, or
+        //  2/ the player is sprinting but not moving, or
+        //  3/ the player is in a puzzle
+        if ( m_fStamina < m_fMaxStamina && ( !m_bSprinting || WalkForce == Vector3.zero || ActivePuzzles != 0 ) )
+        {
+            m_fStamina += Time.fixedDeltaTime / m_fStaminaRecoveryTime * ( ActivePuzzles == 0 ? 1 : 0.3f );
+            if ( m_fStamina > m_fMaxStamina )
+                m_fStamina = m_fMaxStamina;
+        }
+
         if ( ActivePuzzles != 0 )
             return;
 
@@ -347,23 +394,6 @@ public class PlayerBodyController : MonoBehaviour
             }
         }
 
-        //try to walk
-        Vector3 WalkForce = Vector3.zero;
-        if ( Input.GetKey( KeyCode.W ) )
-            WalkForce += Vector3.forward;
-        if ( Input.GetKey( KeyCode.S ) )
-            WalkForce -= Vector3.forward;
-        if ( Input.GetKey( KeyCode.D ) )
-            WalkForce += Vector3.right;
-        if ( Input.GetKey( KeyCode.A ) )
-            WalkForce -= Vector3.right;
-        WalkForce = WalkForce.normalized;
-
-        if ( WalkForce != Vector3.zero )
-            pRigidBody.rotation = UnityEngine.Quaternion.LookRotation( WalkForce );
-
-        if ( m_iGroundFrames == 0 )
-            WalkForce *= m_fAirMoveFraction;
 
         if ( m_bSprinting && m_fStamina > m_fMinStamina && WalkForce != Vector3.zero )
         {
@@ -374,12 +404,13 @@ public class PlayerBodyController : MonoBehaviour
                 m_bSprinting = false;
             }
         }
-        else if ( m_fStamina < m_fMaxStamina )
-        {
-            m_fStamina += Time.fixedDeltaTime / m_fStaminaRecoveryTime;
-            if ( m_fStamina > m_fMaxStamina )
-                m_fStamina = m_fMaxStamina;
-        }
+
+        if ( WalkForce != Vector3.zero )
+            pRigidBody.rotation = UnityEngine.Quaternion.LookRotation( WalkForce );
+
+        if ( m_iGroundFrames == 0 )
+            WalkForce *= m_fAirMoveFraction;
+
         float fMaxSpeed = m_bSprinting ? m_fMaxSprintSpeed : m_fMaxSpeed;
 
         if ( pRigidBody.velocity.sqrMagnitude < fMaxSpeed * fMaxSpeed )
