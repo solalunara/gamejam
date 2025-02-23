@@ -96,7 +96,7 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 0}
+  m_LightingDataAsset: {fileID: 112000000, guid: 97f99b4de72c8cfc683ef43cb1617dab, type: 2}
   m_LightingSettings: {fileID: 0}
 --- !u!196 &4
 NavMeshSettings:
@@ -11190,7 +11190,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02497c7ab079825a3bf696b981d9a591, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_iPuzzleID: -2147483648
+  m_iPuzzleID: 8
 --- !u!114 &1547404571
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11323,7 +11323,7 @@ MonoBehaviour:
   m_fStartTime: 10
   m_fWaitBeforeSameTaskTime: 5
   m_fTempDecreasePerComplete: 20
-  m_fTempIncreasePerFail: 50
+  m_fTempIncreasePerFail: 25
   m_fCharacteristicTime: 240
   m_fInitialTime: 34
 --- !u!1 &1561122772
@@ -12660,7 +12660,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d91e85da33800faaa88dd1df2a84d53, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_iType: -2147483648
+  m_iType: 8
   m_iRoom: 4
 --- !u!135 &1699197996
 SphereCollider:
@@ -13067,7 +13067,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 61.85
+  m_fontSize: 28
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
