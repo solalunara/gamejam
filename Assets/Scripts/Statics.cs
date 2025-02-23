@@ -7,7 +7,8 @@ public enum Puzzle
     CULT_PUZZLE   = 1<<0,
     BOILER_PUZZLE = 1<<1,
     WIFI_PUZZLE   = 1<<2,
-    BUNKER_PUZZLE = 1<<31
+    BUNKER_PUZZLE = 1<<3,
+    CODE_PUZZLE = 1<<4
 }
 
 public enum Room
@@ -35,9 +36,10 @@ static class Statics
     public static Dictionary<Puzzle, Workstation> g_mapWorkstations = new();
     public static Dictionary<Puzzle, string> g_mapPuzzleNames = new()
     {
-        {Puzzle.CULT_PUZZLE, "de-polarize neogenic collector"},
-        {Puzzle.BOILER_PUZZLE, "fix cadmium vacuum cruncher"},
-        {Puzzle.WIFI_PUZZLE, "restart wifi router"}
+        {Puzzle.CULT_PUZZLE, "De-polarise neogenic collector"},
+        {Puzzle.BOILER_PUZZLE, "Fix cadmium vacuum cruncher"},
+        {Puzzle.WIFI_PUZZLE, "Restart wifi router"},
+        {Puzzle.CODE_PUZZLE, "Recalibrate mainframe capacitance"}
     };
     public static FaultList g_pFaultList;
     public static float g_fReactorState = 0.0f;
