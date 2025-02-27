@@ -16,12 +16,7 @@ using static Statics;
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerBodyController : MonoBehaviour
 {
-    Vector3 m_vPlayerUncrouchedEyeoffset;
-    Vector3 m_vPlayerCrouchedEyeoffset;
-    Vector3 m_vPlayerUncrouchedEyeoffsetFromFloor;
-    Vector3 m_vPlayerGroundUnrouchDelta;
-    Vector3 m_vPlayerGroundCrouchDelta;
-    const float EPSILON = 0.1f;
+    const float EPSILON = 0.01f;
 
 
     public GameObject GroundEntity => CheckGround();
@@ -68,6 +63,11 @@ public class PlayerBodyController : MonoBehaviour
     GameObject m_pCrouchedObj;
     Workstation m_pActiveWorkstation;
     int m_iActivePuzzles = 0;
+    Vector3 m_vPlayerUncrouchedEyeoffset;
+    Vector3 m_vPlayerUncrouchedEyeoffsetFromFloor;
+    Vector3 m_vPlayerGroundUnrouchDelta;
+    Vector3 m_vPlayerGroundCrouchDelta;
+    float m_fRotationX;
 
     void OnEnable()
     {
@@ -94,7 +94,6 @@ public class PlayerBodyController : MonoBehaviour
         Bounds bbxWorldSpaceCrouched = m_pCrouchedObj.GetComponent<Collider>().bounds;
         m_pCrouchedObj.SetActive( false );
         Bounds bbxWorldSpaceUncrouched = m_pUncrouchedObj.GetComponent<Collider>().bounds;
-        m_vPlayerCrouchedEyeoffset = -m_pCrouchedObj.transform.localPosition;
         m_vPlayerUncrouchedEyeoffset = -m_pUncrouchedObj.transform.localPosition;
         Vector3 vContactPtCrouched = new( bbxWorldSpaceCrouched.center.x, bbxWorldSpaceCrouched.min.y, bbxWorldSpaceCrouched.center.z );
         Vector3 vContactPtUncrouched = new( bbxWorldSpaceUncrouched.center.x, bbxWorldSpaceUncrouched.min.y, bbxWorldSpaceUncrouched.center.z );
@@ -103,6 +102,7 @@ public class PlayerBodyController : MonoBehaviour
         m_vPlayerUncrouchedEyeoffsetFromFloor = m_pUncrouchedObj.transform.position - vContactPtUncrouched + m_vPlayerUncrouchedEyeoffset;
         m_vPlayerGroundCrouchDelta = vContactPtUncrouched - vContactPtCrouched; //difference from contact pt crouched to contact pt uncrouched (for crouching on ground)
         m_vPlayerGroundUnrouchDelta = -m_vPlayerGroundCrouchDelta + ( vUpperPtUncrouched - vUpperPtCrouched ); //not exactly -gndcrouch b/c top extents not neccesarily alligned
+        m_fRotationX = 0.0f;
     }
 
     private void Physics_ContactEvent( PhysicsScene scene, NativeArray<ContactPairHeader>.ReadOnly pHeaderArray )
@@ -222,7 +222,11 @@ public class PlayerBodyController : MonoBehaviour
                 float y = -Input.GetAxis( "Mouse Y" );
                 float x = Input.GetAxis( "Mouse X" );
                 if ( m_pCamera && m_pCamera.transform.parent )
-                    m_pCamera.transform.parent.Rotate( new Vector3( 1, 0, 0 ), y * m_fMouseSpeed * Time.deltaTime, Space.Self );
+                {
+                    m_fRotationX += y * m_fMouseSpeed * Time.deltaTime;
+                    m_fRotationX = Mathf.Clamp( m_fRotationX, -90.0f, 90.0f );
+                    m_pCamera.transform.parent.localRotation = Quaternion.AngleAxis( m_fRotationX, Vector3.right );
+                }
                 else
                 {
                     m_pCamera = GetComponentInChildren<Camera>();
