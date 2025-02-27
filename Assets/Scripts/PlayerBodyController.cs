@@ -7,21 +7,24 @@ using System.Threading;
 using Unity.Collections;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UI;
 using Vector3 = UnityEngine.Vector3;
-using Slider = UnityEngine.UI.Slider;
+using Quaternion = UnityEngine.Quaternion;
+using Cursor = UnityEngine.Cursor;
 using static Statics;
 
+[RequireComponent(typeof(Rigidbody))]
 public class PlayerBodyController : MonoBehaviour
 {
-    float PLAYER_RADIUS;
-    float PLAYER_UNCROUCHED_ORIGIN;
-    float PLAYER_HEIGHT_CHANGE;
+    Vector3 m_vPlayerUncrouchedEyeoffset;
+    Vector3 m_vPlayerCrouchedEyeoffset;
+    Vector3 m_vPlayerUncrouchedEyeoffsetFromFloor;
+    Vector3 m_vPlayerGroundUnrouchDelta;
+    Vector3 m_vPlayerGroundCrouchDelta;
     const float EPSILON = 0.1f;
 
 
     public GameObject GroundEntity => CheckGround();
-    public Rigidbody ActiveRigidBody => m_pActiveRigidBody;
-    public Vector3 EyeLevel => m_bCrouched ? ActiveRigidBody.position : ActiveRigidBody.position + PLAYER_HEIGHT_CHANGE * Vector3.up;
     public readonly Dictionary<GameObject, Vector3[]> CollisionNormalsSet = new();
 
     public Workstation ActiveWorkstation 
@@ -34,7 +37,7 @@ public class PlayerBodyController : MonoBehaviour
 
     public GameObject m_pInteractionPrompt;
 
-    //public float m_fMouseSpeed = 1000.0f;
+    public float m_fMouseSpeed = 1000.0f;
     public float m_fLookSpeed = 10.0f;
     public float m_fAirMoveFraction = 0.1f;
     public float m_fMaxSpeed = 3.0f;
@@ -50,8 +53,9 @@ public class PlayerBodyController : MonoBehaviour
     public float m_fStamina = 1.0f;
     public float m_fStaminaTime = 3.0f;
     public float m_fStaminaRecoveryTime = 5.0f;
+    public bool m_bLocalMovement = true;
+    Camera m_pCamera;
 
-    Rigidbody m_pActiveRigidBody;
     bool m_bCrouched = false;
     int m_iGroundFrames = 0;
     int m_iFramesSinceGround = 0;
@@ -69,7 +73,7 @@ public class PlayerBodyController : MonoBehaviour
     {
         m_pUncrouchedObj = GetComponentInChildren<PlayerUncrouchedPart>().gameObject;
         m_pCrouchedObj = GetComponentInChildren<PlayerCrouchedPart>( true ).gameObject;
-        m_pActiveRigidBody = m_pUncrouchedObj.GetComponent<Rigidbody>();
+        m_pCamera = GetComponentInChildren<Camera>();
         Physics.ContactEvent += Physics_ContactEvent;
 
         CameraController[] pControllers = FindObjectsOfType<CameraController>();
@@ -86,11 +90,19 @@ public class PlayerBodyController : MonoBehaviour
         if ( !g_mapPlayerControllerMap.ContainsKey( this ) )
             throw new InvalidProgramException( "No camera controller for player " + this );
 
-        float __x = m_pCrouchedObj.GetComponent<SphereCollider>().radius;
-        float __y = m_pUncrouchedObj.GetComponent<Collider>().bounds.extents.y;
-        PLAYER_RADIUS = m_pCrouchedObj.transform.lossyScale.x * __x;
-        PLAYER_UNCROUCHED_ORIGIN = 2*__y - PLAYER_RADIUS;
-        PLAYER_HEIGHT_CHANGE = PLAYER_UNCROUCHED_ORIGIN - PLAYER_RADIUS;
+        m_pCrouchedObj.SetActive( true );
+        Bounds bbxWorldSpaceCrouched = m_pCrouchedObj.GetComponent<Collider>().bounds;
+        m_pCrouchedObj.SetActive( false );
+        Bounds bbxWorldSpaceUncrouched = m_pUncrouchedObj.GetComponent<Collider>().bounds;
+        m_vPlayerCrouchedEyeoffset = -m_pCrouchedObj.transform.localPosition;
+        m_vPlayerUncrouchedEyeoffset = -m_pUncrouchedObj.transform.localPosition;
+        Vector3 vContactPtCrouched = new( bbxWorldSpaceCrouched.center.x, bbxWorldSpaceCrouched.min.y, bbxWorldSpaceCrouched.center.z );
+        Vector3 vContactPtUncrouched = new( bbxWorldSpaceUncrouched.center.x, bbxWorldSpaceUncrouched.min.y, bbxWorldSpaceUncrouched.center.z );
+        Vector3 vUpperPtCrouched = new( bbxWorldSpaceCrouched.center.x, bbxWorldSpaceCrouched.max.y, bbxWorldSpaceCrouched.center.z );
+        Vector3 vUpperPtUncrouched = new( bbxWorldSpaceUncrouched.center.x, bbxWorldSpaceUncrouched.max.y, bbxWorldSpaceUncrouched.center.z );
+        m_vPlayerUncrouchedEyeoffsetFromFloor = m_pUncrouchedObj.transform.position - vContactPtUncrouched + m_vPlayerUncrouchedEyeoffset;
+        m_vPlayerGroundCrouchDelta = vContactPtUncrouched - vContactPtCrouched; //difference from contact pt crouched to contact pt uncrouched (for crouching on ground)
+        m_vPlayerGroundUnrouchDelta = -m_vPlayerGroundCrouchDelta + ( vUpperPtUncrouched - vUpperPtCrouched ); //not exactly -gndcrouch b/c top extents not neccesarily alligned
     }
 
     private void Physics_ContactEvent( PhysicsScene scene, NativeArray<ContactPairHeader>.ReadOnly pHeaderArray )
@@ -101,18 +113,21 @@ public class PlayerBodyController : MonoBehaviour
             Component rFirst = Header.Body;
             Component rSecond = Header.OtherBody;
 
-            PlayerJumpablePart pJumpable = null;
-            if ( rFirst  &&  rFirst.gameObject.GetComponent<PlayerJumpablePart>() )
-                pJumpable =  rFirst.gameObject.GetComponent<PlayerJumpablePart>();
-            if ( rSecond && rSecond.gameObject.GetComponent<PlayerJumpablePart>() )
-                pJumpable = rSecond.gameObject.GetComponent<PlayerJumpablePart>();
+            PlayerBodyController pBody = null;
+            if ( rFirst  &&  rFirst.gameObject.GetComponent<PlayerBodyController>() )
+                pBody =  rFirst.gameObject.GetComponent<PlayerBodyController>();
+            if ( rSecond && rSecond.gameObject.GetComponent<PlayerBodyController>() )
+                pBody = rSecond.gameObject.GetComponent<PlayerBodyController>();
 
-            if ( !pJumpable )
+            if ( !pBody )
                 continue;
 
             for ( int i = Header.PairCount; --i >= 0; )
             {
                 ref readonly var Pair = ref Header.GetContactPair( i );
+
+                if ( !Pair.Collider || !Pair.OtherCollider )
+                    continue;
                 
                 PlayerJumpablePart cFirst = Pair.Collider.gameObject.GetComponent<PlayerJumpablePart>();
                 PlayerJumpablePart cSecond = Pair.OtherCollider.gameObject.GetComponent<PlayerJumpablePart>();
@@ -121,7 +136,7 @@ public class PlayerBodyController : MonoBehaviour
                     continue;
 
                 if ( cFirst && cSecond )
-                    throw new InvalidConnectionException( "Two objects with PlayerJumpablePart are colliding: " + cFirst.gameObject + " and " + cSecond.gameObject );
+                    throw new Exception( "Two objects with PlayerJumpablePart are colliding: " + cFirst.gameObject + " and " + cSecond.gameObject );
 
                 // 'normal' way around is 1st obj jumpable, 2nd object other
                 bool bReversed = !cFirst;
@@ -174,45 +189,53 @@ public class PlayerBodyController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        /*
         // edit cursor lock state for editor
-        if ( Application.isEditor )
+        if ( m_bLocalMovement )
         {
-            bool mouseOverWindow = Input.mousePosition.x > 0 && Input.mousePosition.x < Screen.width && Input.mousePosition.y > 0 && Input.mousePosition.y < Screen.height;
+            if ( Application.isEditor )
+            {
+                bool mouseOverWindow = Input.mousePosition.x > 0 && Input.mousePosition.x < Screen.width && Input.mousePosition.y > 0 && Input.mousePosition.y < Screen.height;
 
-            //check if the cursor is locked but not centred in the game viewport - i.e. like it is every time the game starts
-            if ( Cursor.lockState == CursorLockMode.Locked && !mouseOverWindow )
-            {
-                Cursor.lockState = CursorLockMode.Locked;
-            }
-            //if the player presses Escape, unlock the cursor
-            if (Input.GetKeyDown(KeyCode.Escape) && Cursor.lockState == CursorLockMode.Locked )
-            {
-                Cursor.lockState = CursorLockMode.None;
-            }
-            //if the player releases any mouse button while the cursor is over the game viewport, then lock the cursor again
-            else if ( Cursor.lockState == CursorLockMode.None )
-            {
-                if ( mouseOverWindow && ( Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1) || Input.GetMouseButtonUp(2) ) )
+                //check if the cursor is locked but not centred in the game viewport - i.e. like it is every time the game starts
+                if ( Cursor.lockState == CursorLockMode.Locked && !mouseOverWindow )
                 {
                     Cursor.lockState = CursorLockMode.Locked;
                 }
+                //if the player presses Escape, unlock the cursor
+                if (Input.GetKeyDown(KeyCode.Escape) && Cursor.lockState == CursorLockMode.Locked )
+                {
+                    Cursor.lockState = CursorLockMode.None;
+                }
+                //if the player releases any mouse button while the cursor is over the game viewport, then lock the cursor again
+                else if ( Cursor.lockState == CursorLockMode.None )
+                {
+                    if ( mouseOverWindow && ( Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1) || Input.GetMouseButtonUp(2) ) )
+                    {
+                        if ( ActivePuzzles == 0 )
+                            Cursor.lockState = CursorLockMode.Locked;
+                    }
+                }
             }
-        }
 
-        if ( Cursor.lockState == CursorLockMode.Locked )
-        {
-            float y = -Input.GetAxis( "Mouse Y" );
-            float x = Input.GetAxis( "Mouse X" );
-            m_pCamera.transform.parent.Rotate( new Vector3( 1, 0, 0 ), y * m_fMouseSpeed * Time.deltaTime, Space.Self );
-            transform.Rotate( new Vector3( 0, 1, 0 ), x * m_fMouseSpeed * Time.deltaTime, Space.World );
+            if ( Cursor.lockState == CursorLockMode.Locked )
+            {
+                float y = -Input.GetAxis( "Mouse Y" );
+                float x = Input.GetAxis( "Mouse X" );
+                if ( m_pCamera && m_pCamera.transform.parent )
+                    m_pCamera.transform.parent.Rotate( new Vector3( 1, 0, 0 ), y * m_fMouseSpeed * Time.deltaTime, Space.Self );
+                else
+                {
+                    m_pCamera = GetComponentInChildren<Camera>();
+                    Debug.LogWarning( "no camera found or camera without parent, despite localmovement being set to true" );
+                }
+                transform.rotation *= Quaternion.AngleAxis( x * m_fMouseSpeed * Time.deltaTime, new Vector3( 0, 1, 0 ) );
+            }
         }
 
         if ( Input.GetKeyDown( KeyCode.LeftControl ) )
             m_bWantsToCrouch = true;
         else if ( Input.GetKeyUp( KeyCode.LeftControl ) )
             m_bWantsToCrouch = false;
-        */
 
         if ( Input.GetKeyDown( KeyCode.LeftShift ) )
             m_bSprinting = true;
@@ -232,10 +255,10 @@ public class PlayerBodyController : MonoBehaviour
 
         GameObject.FindWithTag( "StaminaBar" ).GetComponent<Slider>().value = m_fStamina;
 
-        if ( ActiveRigidBody.position.y < 0 )
+        if ( transform.position.y < -5 )
         {
             Debug.LogWarning( "Player fell through floor" );
-            ActiveRigidBody.position += ( PLAYER_HEIGHT_CHANGE + 2 * PLAYER_RADIUS + EPSILON ) * Vector3.up;
+            transform.position = new Vector3( transform.position.x, 5.0f, transform.position.y );
         }
     }
 
@@ -246,6 +269,7 @@ public class PlayerBodyController : MonoBehaviour
             return; //nothing to do
 
         m_iActivePuzzles |= (int)iPuzzle;
+        Cursor.lockState = CursorLockMode.None;
 
         m_pActiveWorkstation.SetUIElemActive( true );
         m_pInteractionPrompt.SetActive( false );
@@ -258,6 +282,7 @@ public class PlayerBodyController : MonoBehaviour
             return; //nothing to do
 
         m_iActivePuzzles = 0;
+        Cursor.lockState = CursorLockMode.Locked;
         Workstation[] pWorkstations = FindObjectsOfType<Workstation>();
         foreach ( var pWorkstation in pWorkstations )
             pWorkstation.SetUIElemActive( false );
@@ -269,13 +294,14 @@ public class PlayerBodyController : MonoBehaviour
             return; //nothing to do
 
         m_iActivePuzzles &= ~(int)iPuzzle;
+        Cursor.lockState = CursorLockMode.Locked;
 
         m_pActiveWorkstation.SetUIElemActive( false );
     }
 
     void Friction()
     {
-        var pRigidBody = ActiveRigidBody;
+        var pRigidBody = GetComponent<Rigidbody>();
         if ( m_iGroundFrames > m_iGroundThreshold )
         {
             if ( pRigidBody.velocity.sqrMagnitude == 0.0f )
@@ -290,6 +316,7 @@ public class PlayerBodyController : MonoBehaviour
 
     void SetCrouchedState( bool bCrouch )
     {
+        var pRigidBody = GetComponent<Rigidbody>();
         bool bChangingState = bCrouch != m_bCrouched;
         if ( !bChangingState )
             return;
@@ -300,44 +327,31 @@ public class PlayerBodyController : MonoBehaviour
 
         GameObject pPreChangeObject = bCrouch ? m_pUncrouchedObj : m_pCrouchedObj;
         GameObject pPostChangeObject = bCrouch ? m_pCrouchedObj : m_pUncrouchedObj;
-        Vector3 vVelocity = ActiveRigidBody.velocity;
-        UnityEngine.Quaternion qRot = ActiveRigidBody.rotation;
         Vector3 vPos;
         if ( !bCrouch )
         {
-            bool bHit = Physics.SphereCast( ActiveRigidBody.position + EPSILON * Vector3.up, PLAYER_RADIUS, -Vector3.up, out RaycastHit hitInfo, PLAYER_RADIUS + 2 * EPSILON, ~LayerMask.GetMask( "Player", "NoCollisionCallbacks" ) );
+            //have to manually test for floor as we could be uncrouching in the air but with not enough space
+            bool bHit = pRigidBody.SweepTest( -m_vPlayerUncrouchedEyeoffsetFromFloor, out RaycastHit pTrace, m_vPlayerUncrouchedEyeoffsetFromFloor.magnitude + EPSILON, QueryTriggerInteraction.Ignore );
             if ( bHit )
-                vPos = hitInfo.point + PLAYER_UNCROUCHED_ORIGIN * Vector3.up;
+                vPos = pTrace.point + m_vPlayerUncrouchedEyeoffsetFromFloor;
             else
-                vPos = m_pCrouchedObj.transform.position - PLAYER_HEIGHT_CHANGE * Vector3.up;
+                vPos = transform.position;
         }
         else
         {
             if ( m_iGroundFrames > 0 )
-                vPos = -PLAYER_HEIGHT_CHANGE * Vector3.up + m_pUncrouchedObj.transform.position;
+                vPos = transform.position + m_vPlayerGroundCrouchDelta;
             else
-                vPos = +PLAYER_HEIGHT_CHANGE * Vector3.up + m_pUncrouchedObj.transform.position;
+                vPos = transform.position;
         }
+
+        transform.position = vPos;
 
         m_pUncrouchedObj.SetActive( !bCrouch );
         m_pCrouchedObj.SetActive( bCrouch );
 
         CollisionNormalsSet.Clear();
         m_pInteractionPrompt.SetActive( false );
-
-        Transform[] pChildren = pPreChangeObject.GetComponentsInChildren<Transform>();
-        foreach ( var pChild in pChildren )
-        {
-            if ( pChild != pPreChangeObject.transform )
-            {
-                pChild.SetParent( pPostChangeObject.transform, false );
-                pChild.transform.position += ( bCrouch ? -1 : 1 ) * PLAYER_HEIGHT_CHANGE * Vector3.up;
-            }
-        }
-        m_pActiveRigidBody = pPostChangeObject.GetComponent<Rigidbody>();
-        ActiveRigidBody.velocity = vVelocity;
-        ActiveRigidBody.rotation = qRot;
-        ActiveRigidBody.position = vPos;
 
         m_bCrouched = bCrouch;
     }
@@ -346,7 +360,7 @@ public class PlayerBodyController : MonoBehaviour
 
     void FixedUpdate()
     {
-        var pRigidBody = ActiveRigidBody;
+        var pRigidBody = GetComponent<Rigidbody>();
 
         m_iGroundFrames = GroundEntity != null ? m_iGroundFrames + 1 : 0;
         m_iCrouchedFrames = m_iCrouchedFrames > 0 ? m_iCrouchedFrames + 1 : 0;
@@ -371,6 +385,9 @@ public class PlayerBodyController : MonoBehaviour
             WalkForce -= Vector3.right;
         WalkForce = WalkForce.normalized;
 
+        if ( m_bLocalMovement )
+            WalkForce = transform.TransformDirection( WalkForce );
+
         // stamina should recover if
         //  1/ the player is not sprinting, or
         //  2/ the player is sprinting but not moving, or
@@ -389,7 +406,7 @@ public class PlayerBodyController : MonoBehaviour
         {
             bool bCanChangeState = true;
             if ( !m_bWantsToCrouch )
-                bCanChangeState = !Physics.SphereCast( ActiveRigidBody.position - EPSILON * Vector3.up, PLAYER_RADIUS, Vector3.up, out RaycastHit __debug, PLAYER_HEIGHT_CHANGE + PLAYER_RADIUS + EPSILON, ~LayerMask.GetMask( "Player", "NoCollisionCallbacks" ) );
+                bCanChangeState = !pRigidBody.SweepTest( m_vPlayerGroundUnrouchDelta, out RaycastHit __debug, m_vPlayerGroundUnrouchDelta.magnitude + EPSILON, QueryTriggerInteraction.Ignore );
 
             if ( bCanChangeState )
             {
@@ -411,7 +428,7 @@ public class PlayerBodyController : MonoBehaviour
             }
         }
 
-        if ( WalkForce != Vector3.zero )
+        if ( WalkForce != Vector3.zero && !m_bLocalMovement )
             pRigidBody.rotation = UnityEngine.Quaternion.LookRotation( WalkForce ) * UnityEngine.Quaternion.AngleAxis( 0.0f, Vector3.up );
 
         if ( m_iGroundFrames == 0 )

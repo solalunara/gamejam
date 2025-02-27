@@ -9,6 +9,6 @@ public class PlayerPositionClone : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        transform.position = m_pPlayer.GetComponent<PlayerBodyController>().EyeLevel;
+        transform.position = m_pPlayer.GetComponent<PlayerBodyController>().transform.position;
     }
 }

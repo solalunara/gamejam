@@ -26,7 +26,10 @@ public class CameraController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Vector3 vPlanePos = Vector3.ProjectOnPlane( m_pPlayer.GetComponent<PlayerBodyController>().ActiveRigidBody.position, Vector3.up ) - m_pCamera.transform.parent.position;
+        if ( !m_pCamera )
+            return;
+
+        Vector3 vPlanePos = Vector3.ProjectOnPlane( m_pPlayer.GetComponent<PlayerBodyController>().transform.position, Vector3.up ) - m_pCamera.transform.parent.position;
         transform.rotation = Quaternion.identity;
         if ( m_pCameraReference && m_pCameraReference.GetComponent<CameraReference>().m_bMoveCameraNearBottom )
             if ( vPlanePos.z < m_fStartRotatingZ )
